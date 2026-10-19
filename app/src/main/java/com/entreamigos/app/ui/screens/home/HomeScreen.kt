@@ -74,7 +74,7 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                Text(text = "¡Hola! 👋", style = MaterialTheme.typography.titleLarge)
+                Text(text = "¡Hola!", style = MaterialTheme.typography.titleLarge)
                 Text(
                     text = "Aquí tienes un resumen de tus grupos",
                     style = MaterialTheme.typography.bodyMedium,

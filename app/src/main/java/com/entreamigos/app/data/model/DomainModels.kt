@@ -1,6 +1,7 @@
 package com.entreamigos.app.data.model
 
 import com.entreamigos.app.data.local.entity.CategoriaGasto
+import com.entreamigos.app.data.local.entity.GrupoIcono
 
 data class Miembro(
     val id: Long,
@@ -28,7 +29,7 @@ data class Deuda(
 data class ResumenGrupo(
     val grupoId: Long,
     val nombre: String,
-    val emoji: String,
+    val icono: GrupoIcono,
     val colorHex: String,
     val numeroMiembros: Int,
     val balanceUsuarioActual: Double

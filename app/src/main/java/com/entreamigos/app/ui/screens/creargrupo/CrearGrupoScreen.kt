@@ -25,16 +25,20 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.entreamigos.app.data.repository.GrupoRepository
 import com.entreamigos.app.ui.components.FormFieldWithError
 import com.entreamigos.app.viewmodel.CrearGrupoViewModel
-import com.entreamigos.app.viewmodel.EMOJIS_GRUPO
+import com.entreamigos.app.ui.components.IconoCircular
+import com.entreamigos.app.ui.components.estiloGrupo
+import com.entreamigos.app.viewmodel.ICONOS_GRUPO
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,17 +82,23 @@ fun CrearGrupoScreen(
             }
             item {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(EMOJIS_GRUPO) { emoji ->
-                        val seleccionado = emoji == uiState.emojiSeleccionado
+                    items(ICONOS_GRUPO) { icono ->
+                        val seleccionado = icono == uiState.iconoSeleccionado
                         Card(
-                            onClick = { viewModel.seleccionarEmoji(emoji) },
+                            onClick = { viewModel.seleccionarIcono(icono) },
                             shape = CircleShape,
                             colors = CardDefaults.cardColors(
                                 containerColor = if (seleccionado) MaterialTheme.colorScheme.primaryContainer
                                 else MaterialTheme.colorScheme.surfaceVariant
-                            )
+                            ),
+                            modifier = Modifier.semantics { selected = seleccionado }
                         ) {
-                            Text(text = emoji, modifier = Modifier.padding(12.dp))
+                            IconoCircular(
+                                estilo = estiloGrupo(icono),
+                                relleno = seleccionado,
+                                tamano = 48.dp,
+                                modifier = Modifier.padding(4.dp)
+                            )
                         }
                     }
                 }

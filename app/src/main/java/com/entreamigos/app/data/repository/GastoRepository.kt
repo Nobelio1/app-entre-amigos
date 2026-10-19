@@ -47,18 +47,10 @@ class GastoRepository(
             )
         )
 
-        val montoBase = BalanceCalculator.redondear(monto / miembrosParticipantesIds.size)
-        val diferencia = BalanceCalculator.redondear(monto - montoBase * miembrosParticipantesIds.size)
-        val centavosExtra = Math.round(diferencia * 100).toInt()
-
-        val participantes = miembrosParticipantesIds.mapIndexed { index, miembroId ->
-            val extra = if (index < centavosExtra) 0.01 else 0.0
-            GastoParticipanteEntity(
-                gastoId = gastoId,
-                miembroId = miembroId,
-                montoAsignado = montoBase + extra
-            )
-        }
+        val participantes = BalanceCalculator.dividirEnPartesIguales(monto, miembrosParticipantesIds)
+            .map { (miembroId, montoAsignado) ->
+                GastoParticipanteEntity(gastoId = gastoId, miembroId = miembroId, montoAsignado = montoAsignado)
+            }
         gastoDao.insertarParticipantes(participantes)
         return gastoId
     }
@@ -143,7 +135,7 @@ class GastoRepository(
                         participantes = emptyList()
                     ),
                     nombreGrupo = grupo.nombre,
-                    emojiGrupo = grupo.emoji
+                    iconoGrupo = grupo.icono
                 )
             }
         }

@@ -18,9 +18,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.entreamigos.app.ui.components.iconoParaCategoria
+import com.entreamigos.app.ui.components.IconoCircular
+import com.entreamigos.app.ui.components.estiloCategoria
 import com.entreamigos.app.ui.components.nombreCategoria
 import com.entreamigos.app.ui.theme.MoradoGrupo
 import com.entreamigos.app.util.CurrencyFormatter
@@ -51,7 +51,13 @@ fun EstadisticasTab(uiState: GrupoDetailUiState) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("${iconoParaCategoria(estadistica.categoria)}  ${nombreCategoria(estadistica.categoria)}")
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconoCircular(estilo = estiloCategoria(estadistica.categoria), tamano = 28.dp)
+                        Text(
+                            text = nombreCategoria(estadistica.categoria),
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
                     Text(CurrencyFormatter.formatear(estadistica.monto), style = MaterialTheme.typography.bodyMedium)
                 }
                 BarraDeProgreso(porcentaje = estadistica.porcentaje / 100f)

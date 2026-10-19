@@ -15,7 +15,7 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("grupoId")]
+    indices = [Index("grupoId"), Index(value = ["remoteId"], unique = true)]
 )
 data class MiembroEntity(
     @PrimaryKey(autoGenerate = true)
@@ -23,5 +23,7 @@ data class MiembroEntity(
     val grupoId: Long,
     val nombre: String,
     val esUsuarioActual: Boolean = false,
-    val colorAvatarHex: String = "#7E57C2"
+    val colorAvatarHex: String = "#7E57C2",
+    val remoteId: Long? = null,
+    val sincronizado: Boolean = false
 )

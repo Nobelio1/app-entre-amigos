@@ -1,15 +1,9 @@
 package com.entreamigos.app.ui.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Card
@@ -24,7 +18,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.entreamigos.app.data.model.ResumenGrupo
-import com.entreamigos.app.ui.theme.FondoClaro
 import com.entreamigos.app.util.CurrencyFormatter
 
 @Composable
@@ -51,14 +44,7 @@ fun GroupCard(resumen: ResumenGrupo, onClick: () -> Unit, modifier: Modifier = M
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(FondoClaro, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(text = resumen.emoji, style = MaterialTheme.typography.titleLarge)
-            }
+            IconoCircular(estilo = estiloGrupo(resumen.icono), tamano = 48.dp, relleno = false)
             Column(
                 modifier = Modifier
                     .weight(1f)

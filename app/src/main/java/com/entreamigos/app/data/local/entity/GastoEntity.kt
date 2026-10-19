@@ -25,7 +25,7 @@ enum class CategoriaGasto {
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("grupoId"), Index("pagadoPorId")]
+    indices = [Index("grupoId"), Index("pagadoPorId"), Index(value = ["remoteId"], unique = true)]
 )
 data class GastoEntity(
     @PrimaryKey(autoGenerate = true)
@@ -35,5 +35,7 @@ data class GastoEntity(
     val monto: Double,
     val pagadoPorId: Long,
     val categoria: CategoriaGasto = CategoriaGasto.OTROS,
-    val fecha: Long = System.currentTimeMillis()
+    val fecha: Long = System.currentTimeMillis(),
+    val remoteId: Long? = null,
+    val sincronizado: Boolean = false
 )

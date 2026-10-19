@@ -14,6 +14,7 @@ import com.entreamigos.app.data.local.entity.CategoriaGasto
 import com.entreamigos.app.data.local.entity.GastoEntity
 import com.entreamigos.app.data.local.entity.GastoParticipanteEntity
 import com.entreamigos.app.data.local.entity.GrupoEntity
+import com.entreamigos.app.data.local.entity.GrupoIcono
 import com.entreamigos.app.data.local.entity.MiembroEntity
 import com.entreamigos.app.data.local.entity.PagoEntity
 
@@ -23,6 +24,12 @@ class Converters {
 
     @TypeConverter
     fun toCategoria(valor: String): CategoriaGasto = CategoriaGasto.valueOf(valor)
+
+    @TypeConverter
+    fun fromIcono(icono: GrupoIcono): String = icono.name
+
+    @TypeConverter
+    fun toIcono(valor: String): GrupoIcono = GrupoIcono.desdeNombre(valor)
 }
 
 @Database(
@@ -33,7 +40,7 @@ class Converters {
         GastoParticipanteEntity::class,
         PagoEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -55,6 +62,10 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "entreamigos_db"
                 )
+                    // v1 → v2 (emoji → GrupoIcono, columnas de sincronización): el equipo
+                    // confirmó que aún no hay datos reales que preservar. Antes de la
+                    // Fase 4 esto debe reemplazarse por objetos Migration explícitos;
+                    // a partir de v2 el backend también es respaldo de los datos.
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instancia

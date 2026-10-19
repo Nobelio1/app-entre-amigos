@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -15,29 +14,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import com.entreamigos.app.data.local.entity.CategoriaGasto
 import com.entreamigos.app.data.model.Deuda
 import com.entreamigos.app.data.model.Gasto
 import com.entreamigos.app.util.CurrencyFormatter
 import com.entreamigos.app.util.DateFormatter
-
-fun iconoParaCategoria(categoria: CategoriaGasto): String = when (categoria) {
-    CategoriaGasto.COMIDA -> "🍽️"
-    CategoriaGasto.TRANSPORTE -> "🚗"
-    CategoriaGasto.HOSPEDAJE -> "🏨"
-    CategoriaGasto.ENTRETENIMIENTO -> "🎉"
-    CategoriaGasto.SERVICIOS -> "💡"
-    CategoriaGasto.OTROS -> "🧾"
-}
-
-fun nombreCategoria(categoria: CategoriaGasto): String = when (categoria) {
-    CategoriaGasto.COMIDA -> "Comida"
-    CategoriaGasto.TRANSPORTE -> "Transporte"
-    CategoriaGasto.HOSPEDAJE -> "Hospedaje"
-    CategoriaGasto.ENTRETENIMIENTO -> "Entretenimiento"
-    CategoriaGasto.SERVICIOS -> "Servicios"
-    CategoriaGasto.OTROS -> "Otros"
-}
 
 @Composable
 fun GastoItem(gasto: Gasto, modifier: Modifier = Modifier) {
@@ -51,7 +31,7 @@ fun GastoItem(gasto: Gasto, modifier: Modifier = Modifier) {
             },
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = iconoParaCategoria(gasto.categoria), style = MaterialTheme.typography.titleLarge)
+        IconoCircular(estilo = estiloCategoria(gasto.categoria))
         Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
             Text(text = gasto.descripcion, style = MaterialTheme.typography.bodyLarge)
             Text(

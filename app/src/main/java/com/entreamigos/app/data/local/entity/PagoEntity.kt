@@ -27,7 +27,7 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("grupoId"), Index("deudorId"), Index("acreedorId")]
+    indices = [Index("grupoId"), Index("deudorId"), Index("acreedorId"), Index(value = ["remoteId"], unique = true)]
 )
 data class PagoEntity(
     @PrimaryKey(autoGenerate = true)
@@ -36,5 +36,7 @@ data class PagoEntity(
     val deudorId: Long,
     val acreedorId: Long,
     val monto: Double,
-    val fecha: Long = System.currentTimeMillis()
+    val fecha: Long = System.currentTimeMillis(),
+    val remoteId: Long? = null,
+    val sincronizado: Boolean = false
 )

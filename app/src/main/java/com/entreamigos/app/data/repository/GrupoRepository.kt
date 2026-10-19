@@ -7,6 +7,7 @@ import com.entreamigos.app.data.local.dao.PagoDao
 import com.entreamigos.app.data.local.entity.GastoEntity
 import com.entreamigos.app.data.local.entity.GastoParticipanteEntity
 import com.entreamigos.app.data.local.entity.GrupoEntity
+import com.entreamigos.app.data.local.entity.GrupoIcono
 import com.entreamigos.app.data.local.entity.MiembroEntity
 import com.entreamigos.app.data.local.entity.PagoEntity
 import com.entreamigos.app.data.model.ResumenGeneral
@@ -28,8 +29,8 @@ class GrupoRepository(
 
     fun observarMiembros(grupoId: Long): Flow<List<MiembroEntity>> = miembroDao.observarMiembros(grupoId)
 
-    suspend fun crearGrupo(nombre: String, emoji: String, colorHex: String, nombresMiembros: List<String>): Long {
-        val grupoId = grupoDao.insertar(GrupoEntity(nombre = nombre, emoji = emoji, colorHex = colorHex))
+    suspend fun crearGrupo(nombre: String, icono: GrupoIcono, colorHex: String, nombresMiembros: List<String>): Long {
+        val grupoId = grupoDao.insertar(GrupoEntity(nombre = nombre, icono = icono, colorHex = colorHex))
         val miembros = nombresMiembros.mapIndexed { index, nombreMiembro ->
             MiembroEntity(
                 grupoId = grupoId,
@@ -71,7 +72,7 @@ class GrupoRepository(
                 ResumenGrupo(
                     grupoId = grupo.id,
                     nombre = grupo.nombre,
-                    emoji = grupo.emoji,
+                    icono = grupo.icono,
                     colorHex = grupo.colorHex,
                     numeroMiembros = miembrosDelGrupo.size,
                     balanceUsuarioActual = BalanceCalculator.redondear(balanceUsuario)

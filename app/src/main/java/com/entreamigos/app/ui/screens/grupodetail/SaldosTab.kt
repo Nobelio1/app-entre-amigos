@@ -7,6 +7,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.TaskAlt
+import androidx.compose.material3.Icon
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -17,14 +21,16 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.entreamigos.app.data.model.Deuda
 import com.entreamigos.app.ui.components.AvatarMiembro
 import com.entreamigos.app.ui.components.colorDeBalance
+import com.entreamigos.app.ui.theme.VerdeSaldoPositivo
 import com.entreamigos.app.util.CurrencyFormatter
 import com.entreamigos.app.viewmodel.GrupoDetailUiState
 
@@ -33,8 +39,25 @@ fun SaldosTab(uiState: GrupoDetailUiState, onLiquidar: (Deuda) -> Unit) {
     var deudaSeleccionada by remember { mutableStateOf<Deuda?>(null) }
 
     if (uiState.deudas.isEmpty()) {
-        Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-            Text("¡Todos los saldos están en cero! 🎉", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(
+            modifier = Modifier.fillMaxSize().padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = Icons.Filled.TaskAlt,
+                contentDescription = null,
+                tint = VerdeSaldoPositivo,
+                modifier = Modifier.size(56.dp)
+            )
+            Text(
+                "¡Todos los saldos están en cero!",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(top = 12.dp)
+            )
+            Text(
+                "Nadie le debe nada a nadie en este grupo.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     } else {
         LazyColumn(

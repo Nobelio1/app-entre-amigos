@@ -3,6 +3,7 @@ package com.entreamigos.app.ui.navigation
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -11,7 +12,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import androidx.compose.runtime.getValue
 import com.entreamigos.app.data.repository.GastoRepository
 import com.entreamigos.app.data.repository.GrupoRepository
 import com.entreamigos.app.ui.screens.creargrupo.CrearGrupoScreen

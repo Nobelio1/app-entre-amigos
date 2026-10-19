@@ -3,17 +3,19 @@ package com.entreamigos.app.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.entreamigos.app.data.local.entity.GrupoIcono
 import com.entreamigos.app.data.repository.GrupoRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-val EMOJIS_GRUPO = listOf("🏖️", "🏠", "🍻", "🎓", "🚗", "🎉", "🍕", "⚽")
+/** Íconos ofrecidos al crear un grupo; GENERAL queda como valor por defecto interno. */
+val ICONOS_GRUPO = GrupoIcono.entries.filter { it != GrupoIcono.GENERAL }
 
 data class CrearGrupoUiState(
     val nombreGrupo: String = "",
-    val emojiSeleccionado: String = EMOJIS_GRUPO.first(),
+    val iconoSeleccionado: GrupoIcono = ICONOS_GRUPO.first(),
     val nombresMiembros: List<String> = listOf("Tú", ""),
     val errorNombreGrupo: String? = null,
     val errorMiembros: String? = null,
@@ -33,8 +35,8 @@ class CrearGrupoViewModel(private val grupoRepository: GrupoRepository) : ViewMo
         _uiState.value = _uiState.value.copy(nombreGrupo = nombre, errorNombreGrupo = null)
     }
 
-    fun seleccionarEmoji(emoji: String) {
-        _uiState.value = _uiState.value.copy(emojiSeleccionado = emoji)
+    fun seleccionarIcono(icono: GrupoIcono) {
+        _uiState.value = _uiState.value.copy(iconoSeleccionado = icono)
     }
 
     fun actualizarMiembro(index: Int, nombre: String) {
@@ -72,7 +74,7 @@ class CrearGrupoViewModel(private val grupoRepository: GrupoRepository) : ViewMo
         viewModelScope.launch {
             val id = grupoRepository.crearGrupo(
                 nombre = estado.nombreGrupo.trim(),
-                emoji = estado.emojiSeleccionado,
+                icono = estado.iconoSeleccionado,
                 colorHex = "#1B5E4F",
                 nombresMiembros = nombresValidos
             )
