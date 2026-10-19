@@ -28,7 +28,6 @@ import com.entreamigos.app.ui.theme.RojoSaldoNegativo
 import com.entreamigos.app.ui.theme.VerdeAccion
 import com.entreamigos.app.util.CurrencyFormatter
 
-/** "Resumen general" de Home: tres tarjetas blancas con ícono circular y monto centrado. */
 @Composable
 fun ResumenGeneralRow(resumen: ResumenGeneral, modifier: Modifier = Modifier) {
     Row(

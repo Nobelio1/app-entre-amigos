@@ -5,10 +5,6 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-/**
- * Sin `remoteId`/`sincronizado`: en la API los participantes no tienen identidad
- * propia, viajan dentro del gasto y se sincronizan (y reemplazan) junto con él.
- */
 @Entity(
     tableName = "gasto_participantes",
     foreignKeys = [

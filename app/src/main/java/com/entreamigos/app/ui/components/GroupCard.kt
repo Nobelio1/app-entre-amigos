@@ -24,7 +24,6 @@ import androidx.compose.ui.unit.dp
 import com.entreamigos.app.data.model.ResumenGrupo
 import com.entreamigos.app.util.CurrencyFormatter
 
-/** Tarjeta de "Mis grupos": ícono pastel 56dp, nombre, miembros y balance coloreado. */
 @Composable
 fun GroupCard(resumen: ResumenGrupo, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val balance = resumen.balanceUsuarioActual

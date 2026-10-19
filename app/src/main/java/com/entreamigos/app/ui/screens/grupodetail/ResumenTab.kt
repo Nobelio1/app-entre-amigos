@@ -53,8 +53,6 @@ fun ResumenTab(
     onIrASaldos: () -> Unit
 ) {
     val usuarioId = uiState.miembros.firstOrNull { it.esUsuarioActual }?.id
-    // En el Resumen solo importan las deudas en las que participa el usuario;
-    // la lista completa del grupo está en la pestaña Saldos.
     val deudasDelUsuario = uiState.deudasQueLeDebenAlUsuario + uiState.deudasQueElUsuarioDebe
     val colorAcento = MaterialTheme.colorScheme.secondary
 
@@ -173,7 +171,6 @@ private fun TarjetaBalance(balance: Double) {
                 Text(text = monto, style = MaterialTheme.typography.headlineSmall, color = color)
                 Text(text = sufijo, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold), color = color)
             }
-            // Reemplazo vectorial de la ilustración de billetes del mockup
             Icon(
                 Icons.Filled.Payments,
                 contentDescription = null,

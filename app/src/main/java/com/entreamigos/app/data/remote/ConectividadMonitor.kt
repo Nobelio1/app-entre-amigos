@@ -8,12 +8,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/**
- * Expone si el dispositivo tiene una red con salida a internet. Es solo una pista
- * barata: tener red no garantiza que el backend responda (de eso se entera
- * SincronizacionRepository al hacer cada llamada), pero sí permite reaccionar al
- * instante cuando la red vuelve y disparar una sincronización.
- */
 class ConectividadMonitor(context: Context) {
 
     private val connectivityManager = context.getSystemService(ConnectivityManager::class.java)

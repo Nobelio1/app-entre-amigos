@@ -10,25 +10,22 @@
 local.properties
 /.claude
 
-
 *.apk
 *.aar
 *.bundle
 *.dex
 
-# Directories
 /build/
 /app/build/
 /.gradle/
 .idea/
 
-# Secretos de entorno (usar .env.example como plantilla)
 .env
 .env.*
 !.env.example
 
-# Backend
 /backend/build/
 /backend/.gradle/
 /backend/.kotlin/
 .kotlin/
+/docs/

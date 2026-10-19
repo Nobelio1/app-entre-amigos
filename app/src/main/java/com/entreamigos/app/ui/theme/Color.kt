@@ -2,22 +2,14 @@ package com.entreamigos.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-/*
- * Tokens medidos sobre docs/mockups/mockup-home.png (muestreo de píxeles del área
- * dominante de cada elemento). Si el mockup cambia, volver a medir antes de "ajustar
- * a ojo": el verde y el morado originales eran visiblemente más claros que el diseño.
- */
-
-// Home: header verde bosque y acentos
 val VerdeInicio = Color(0xFF12423C)
 val VerdeInicioOscuro = Color(0xFF0C2E2A)
-val VerdeMenta = Color(0xFF5ADEBA)          // ícono del logo en el header
-val VerdeAccion = Color(0xFF3F8C47)         // FAB central y círculo "Total gastado"
+val VerdeMenta = Color(0xFF5ADEBA)
+val VerdeAccion = Color(0xFF3F8C47)
 
-// Detalle de grupo: header morado y acentos
 val MoradoGrupo = Color(0xFF4B3D86)
-val MoradoAccion = Color(0xFF5424AF)        // botón "Registrar nuevo gasto", montos, pestaña activa
-val MoradoGrupoClaro = Color(0xFF9C8CE0)    // variante para modo oscuro
+val MoradoAccion = Color(0xFF5424AF)
+val MoradoGrupoClaro = Color(0xFF9C8CE0)
 
 val VerdeSaldoPositivo = Color(0xFF2E7D32)
 val RojoSaldoNegativo = Color(0xFFD32F2F)

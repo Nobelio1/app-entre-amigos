@@ -38,13 +38,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.entreamigos.app.data.model.EstadoConexion
 
-/**
- * Franja de estado de conexión bajo el header. Tres variantes, por prioridad:
- * 1. Sin conexión (gris): la app funciona offline; muestra cuántos cambios esperan subir.
- * 2. Error del servidor (rojo): algo falló de verdad; ofrece reintentar.
- * 3. Sincronizando: barra de progreso fina, sin texto, para no distraer.
- * Si todo está bien no ocupa espacio.
- */
 @Composable
 fun BannerConexion(estado: EstadoConexion, onReintentar: () -> Unit, modifier: Modifier = Modifier) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -133,11 +126,6 @@ fun PantallaError(mensaje: String, onReintentar: () -> Unit, modifier: Modifier 
     }
 }
 
-/**
- * Pull-to-refresh con la API de Material3 1.2 (la que trae el BOM 2024.06). El estado
- * de "refrescando" lo manda el ViewModel: el indicador se queda visible mientras la
- * sincronización está en curso, no solo mientras el dedo arrastra.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContenedorRefrescable(
@@ -153,8 +141,6 @@ fun ContenedorRefrescable(
     LaunchedEffect(refrescando) {
         if (refrescando) estado.startRefresh() else estado.endRefresh()
     }
-    // clipToBounds: en reposo el indicador se dibuja desplazado hacia arriba, fuera
-    // del contenedor; sin recorte quedaría visible encima del header.
     Box(modifier = modifier.clipToBounds().nestedScroll(estado.nestedScrollConnection)) {
         contenido()
         PullToRefreshContainer(state = estado, modifier = Modifier.align(Alignment.TopCenter))

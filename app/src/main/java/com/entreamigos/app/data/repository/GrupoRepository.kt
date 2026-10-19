@@ -19,10 +19,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 
-/**
- * Las lecturas salen siempre de Room. Las escrituras se guardan primero en local y
- * luego se suben al backend en segundo plano (write-through vía [sincronizacion]).
- */
 class GrupoRepository(
     private val database: AppDatabase,
     private val grupoDao: GrupoDao,
@@ -39,7 +35,6 @@ class GrupoRepository(
     fun observarMiembros(grupoId: Long): Flow<List<MiembroEntity>> = miembroDao.observarMiembros(grupoId)
 
     suspend fun crearGrupo(nombre: String, icono: GrupoIcono, colorHex: String, nombresMiembros: List<String>): Long {
-        // Transacción: la sincronización nunca debe ver un grupo todavía sin miembros
         val grupoId = database.withTransaction {
             val id = grupoDao.insertar(GrupoEntity(nombre = nombre, icono = icono, colorHex = colorHex))
             val miembros = nombresMiembros.mapIndexed { index, nombreMiembro ->
@@ -111,10 +106,6 @@ class GrupoRepository(
             )
         }
 
-    /**
-     * Nombre real del usuario para el saludo de Home. "Tú" es el valor por defecto del
-     * formulario de crear grupo, así que no sirve como nombre: si no hay otro, null.
-     */
     fun observarNombreUsuarioActual(): Flow<String?> =
         miembroDao.observarNombresUsuarioActual().map { nombres ->
             nombres.map { it.trim() }.firstOrNull { it.isNotEmpty() && !it.equals(NOMBRE_POR_DEFECTO, ignoreCase = true) }

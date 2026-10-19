@@ -36,11 +36,9 @@ class HomeViewModel(
     val actividad: StateFlow<List<ActividadItem>> = gastoRepository.observarActividadGlobal()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** Para el saludo "¡Hola, Moisés!"; null si el usuario aún no puso su nombre. */
     val nombreUsuario: StateFlow<String?> = grupoRepository.observarNombreUsuarioActual()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    /** Número del badge rojo de la campana. */
     val notificacionesNoVistas: StateFlow<Int> = gastoRepository.observarGastosNoVistos()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
@@ -49,7 +47,6 @@ class HomeViewModel(
     val conexion: StateFlow<EstadoConexion> = sincronizacion.estadoConexion
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EstadoConexion())
 
-    /** Pull-to-refresh y botón "Reintentar". */
     fun refrescar() = sincronizacion.sincronizarEnSegundoPlano()
 
     class Factory(

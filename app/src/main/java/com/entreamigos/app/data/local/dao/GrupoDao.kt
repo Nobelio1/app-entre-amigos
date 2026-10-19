@@ -22,8 +22,6 @@ interface GrupoDao {
     @Delete
     suspend fun eliminar(grupo: GrupoEntity)
 
-    // ---- Sincronización con el backend ----
-
     @Query("SELECT * FROM grupos WHERE id = :grupoId")
     suspend fun obtener(grupoId: Long): GrupoEntity?
 

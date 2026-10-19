@@ -1,6 +1,3 @@
-# Levanta la base de datos y la API de EntreAmigos:  docker compose up -d
-# Las credenciales se leen de .env (copiar desde .env.example); si no existe,
-# se usan los valores por defecto de desarrollo indicados con ":-".
 name: entreamigos
 
 services:

@@ -20,9 +20,7 @@ import org.slf4j.event.Level
 fun Application.configurarSerializacion() {
     install(ContentNegotiation) {
         json(Json {
-            // Tolerante con campos nuevos que agregue el cliente en futuras versiones
             ignoreUnknownKeys = true
-            // Emite también los valores por defecto para que el contrato sea explícito
             encodeDefaults = true
             explicitNulls = false
         })
@@ -36,20 +34,12 @@ fun Application.configurarLogs() {
     }
 }
 
-/**
- * Traduce excepciones a respuestas con el formato estándar `{"error": "mensaje"}`.
- * Los errores 500 nunca exponen el mensaje interno (podría filtrar SQL o rutas);
- * el detalle queda en el log del servidor.
- */
 fun Application.configurarErrores() {
     install(StatusPages) {
         exception<SolicitudInvalidaException> { call, causa ->
             call.respond(HttpStatusCode.BadRequest, ErrorResponse(causa.message ?: "Solicitud inválida"))
         }
         exception<BadRequestException> { call, causa ->
-            // JSON mal formado, campos obligatorios ausentes o tipos incorrectos
-            // kotlinx.serialization adjunta el JSON recibido completo tras un salto de línea;
-            // solo devolvemos la primera línea para no reflejar el cuerpo en la respuesta.
             val detalle = generateSequence(causa.cause) { it.cause }
                 .firstNotNullOfOrNull { it.message }
                 ?.lineSequence()?.first()

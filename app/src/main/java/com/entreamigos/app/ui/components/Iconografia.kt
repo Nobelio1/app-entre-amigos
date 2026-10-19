@@ -29,13 +29,6 @@ import androidx.compose.ui.unit.dp
 import com.entreamigos.app.data.local.entity.CategoriaGasto
 import com.entreamigos.app.data.local.entity.GrupoIcono
 
-/*
- * Única fuente de iconografía de la app: todo ícono de grupo o categoría pasa por
- * aquí. La app no usa emojis porque su dibujo depende de la fuente del dispositivo;
- * los ImageVector de material-icons-extended se ven idénticos en todos lados.
- */
-
-/** Ícono y color de acento de un grupo. */
 data class EstiloIcono(val icono: ImageVector, val color: Color, val etiqueta: String)
 
 fun estiloGrupo(icono: GrupoIcono): EstiloIcono = when (icono) {
@@ -50,7 +43,6 @@ fun estiloGrupo(icono: GrupoIcono): EstiloIcono = when (icono) {
     GrupoIcono.GENERAL -> EstiloIcono(Icons.Filled.Groups, Color(0xFF546E7A), "General")
 }
 
-/** Colores de categoría tomados del mockup (círculos de "Gastos recientes"). */
 fun estiloCategoria(categoria: CategoriaGasto): EstiloIcono = when (categoria) {
     CategoriaGasto.COMIDA -> EstiloIcono(Icons.Filled.Restaurant, Color(0xFFEF7D2D), "Comida")
     CategoriaGasto.TRANSPORTE -> EstiloIcono(Icons.Filled.DirectionsCar, Color(0xFF43A047), "Transporte")
@@ -64,12 +56,6 @@ fun iconoParaCategoria(categoria: CategoriaGasto): ImageVector = estiloCategoria
 
 fun nombreCategoria(categoria: CategoriaGasto): String = estiloCategoria(categoria).etiqueta
 
-/**
- * Ícono dentro de un círculo. Dos variantes del mockup:
- * - `relleno = true`: círculo sólido con ícono blanco (categorías de gasto).
- * - `relleno = false`: círculo pastel (color al 15 %) con ícono de color (grupos).
- *   Usar alfa en vez de un pastel fijo hace que también funcione en modo oscuro.
- */
 @Composable
 fun IconoCircular(
     estilo: EstiloIcono,

@@ -137,7 +137,6 @@ fun HomeScreen(
                     }
                 )
 
-                // Hoja clara que "sube" sobre el header verde, como en el mockup
                 Surface(
                     shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
                     color = MaterialTheme.colorScheme.background,
@@ -173,7 +172,6 @@ fun HomeScreen(
                                             EstadoVacio("Todavía no tienes grupos. Crea el primero para empezar a registrar gastos compartidos.")
                                         }
                                     }
-                                    // Prefijo en la key: este LazyColumn mezcla grupos con otras filas
                                     items(estado.data, key = { "grupo-${it.grupoId}" }) { grupo ->
                                         GroupCard(resumen = grupo, onClick = { onGrupoClick(grupo.grupoId) })
                                     }
@@ -283,10 +281,6 @@ private fun HeaderInicio(
     }
 }
 
-/**
- * Menú lateral del ícono hamburguesa. Perfil navega; Configuración y Cerrar sesión son
- * marcadores de posición hasta las fases siguientes (no hay autenticación todavía).
- */
 @Composable
 private fun MenuLateral(
     nombreUsuario: String?,
@@ -294,8 +288,6 @@ private fun MenuLateral(
     onConfiguracion: () -> Unit,
     onCerrarSesion: () -> Unit
 ) {
-    // windowInsets = 0: el encabezado verde se extiende detrás de la barra de estado
-    // (lo compensa su statusBarsPadding), igual que el header de Home.
     ModalDrawerSheet(drawerContainerColor = MaterialTheme.colorScheme.surface, windowInsets = WindowInsets(0)) {
         Column(
             modifier = Modifier

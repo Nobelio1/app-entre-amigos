@@ -15,7 +15,6 @@ repositories {
     mavenCentral()
 }
 
-// Bytecode Java 17 (igual que la app Android) sin exigir un JDK 17 instalado localmente
 java {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
@@ -32,7 +31,6 @@ application {
 }
 
 dependencies {
-    // Servidor HTTP + JSON
     implementation("io.ktor:ktor-server-core-jvm:$ktorVersion")
     implementation("io.ktor:ktor-server-netty-jvm:$ktorVersion")
     implementation("io.ktor:ktor-server-content-negotiation-jvm:$ktorVersion")
@@ -41,13 +39,11 @@ dependencies {
     implementation("io.ktor:ktor-server-call-logging-jvm:$ktorVersion")
     implementation("ch.qos.logback:logback-classic:1.5.8")
 
-    // Persistencia: Exposed (DSL tipado) sobre un pool Hikari y el driver de Postgres
     implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
     implementation("com.zaxxer:HikariCP:5.1.0")
     implementation("org.postgresql:postgresql:42.7.4")
 
-    // Migraciones versionadas: el esquema vive en src/main/resources/db/migration
     implementation("org.flywaydb:flyway-core:$flywayVersion")
     implementation("org.flywaydb:flyway-database-postgresql:$flywayVersion")
 

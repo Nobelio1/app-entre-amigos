@@ -18,7 +18,6 @@ private val LightColors = lightColorScheme(
     background = FondoClaro,
     onBackground = TextoPrincipalClaro,
     surface = SuperficieClara,
-    // Sin tinte tonal: el mockup usa tarjetas blancas puras (la profundidad la dan sombra y borde)
     surfaceTint = SuperficieClara,
     onSurface = TextoPrincipalClaro,
     onSurfaceVariant = TextoSecundarioClaro,

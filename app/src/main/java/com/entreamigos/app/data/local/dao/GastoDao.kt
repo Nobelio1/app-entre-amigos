@@ -32,17 +32,11 @@ interface GastoDao {
     @Delete
     suspend fun eliminarGasto(gasto: GastoEntity)
 
-    /**
-     * Gastos registrados por otros miembros después de [desde]: alimenta el badge de la
-     * campana. Los gastos que registró el propio usuario no cuentan como "nuevos".
-     */
     @Query(
         "SELECT COUNT(*) FROM gastos g INNER JOIN miembros m ON m.id = g.pagadoPorId " +
             "WHERE g.fecha > :desde AND m.esUsuarioActual = 0"
     )
     fun observarGastosDeOtrosDesde(desde: Long): Flow<Int>
-
-    // ---- Sincronización con el backend ----
 
     @Update
     suspend fun actualizarGasto(gasto: GastoEntity)

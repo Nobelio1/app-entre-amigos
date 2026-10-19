@@ -19,7 +19,6 @@ class BalanceCalculatorTest {
         assertEquals(listOf(1L to 33.34, 2L to 33.33, 3L to 33.33), reparto)
     }
 
-    /** Regresión de la Fase 1: 20 / 3 sumaba 20.01 porque el ajuste negativo se ignoraba. */
     @Test
     fun `veinte soles entre tres suma exactamente veinte`() {
         val reparto = BalanceCalculator.dividirEnPartesIguales(20.0, listOf(1L, 2L, 3L))

@@ -5,11 +5,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-/**
- * Escala del mockup: títulos de sección 16sp semibold, nombres en tarjetas 15sp,
- * textos secundarios 12–13sp. Se mantiene la fuente del sistema (Roboto) en lugar de
- * agregar una fuente descargable solo por la tipografía del mockup.
- */
 val Typography = Typography(
     headlineSmall = TextStyle(fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 36.sp),
     titleLarge = TextStyle(fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 28.sp),

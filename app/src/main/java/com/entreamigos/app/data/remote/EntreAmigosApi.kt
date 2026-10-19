@@ -17,7 +17,6 @@ import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
 
-/** Contrato REST del backend (ver backend/API.md). Los ids son del servidor. */
 interface EntreAmigosApi {
 
     @GET("grupos")

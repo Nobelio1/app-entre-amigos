@@ -14,11 +14,6 @@ object DatabaseFactory {
 
     private val log = LoggerFactory.getLogger(DatabaseFactory::class.java)
 
-    /**
-     * Abre el pool, aplica las migraciones pendientes y registra la conexión en Exposed.
-     * Flyway corre en cada arranque: si el esquema ya está al día no hace nada, y si
-     * hay una V2 nueva la aplica antes de aceptar peticiones.
-     */
     fun inicializar(config: ConfigBaseDatos) {
         val dataSource = HikariDataSource(HikariConfig().apply {
             jdbcUrl = config.url
@@ -40,7 +35,6 @@ object DatabaseFactory {
         Database.connect(dataSource)
     }
 
-    /** Ejecuta [bloque] en una transacción sin bloquear los hilos de Ktor. */
     suspend fun <T> consulta(bloque: suspend () -> T): T =
         newSuspendedTransaction(Dispatchers.IO) { bloque() }
 }

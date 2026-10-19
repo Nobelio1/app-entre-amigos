@@ -36,24 +36,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/**
- * Motor de sincronización offline-first entre Room y el backend.
- *
- * Reglas:
- * 1. **Room es la única fuente que lee la UI.** Esta clase nunca entrega datos remotos
- *    directamente: los escribe en Room y los Flow de los DAOs hacen el resto.
- * 2. **Escritura local primero.** Los repositorios guardan en Room (`sincronizado = false`)
- *    y luego llaman a [subirPendientesEnSegundoPlano] (write-through). Si no hay red, el
- *    registro queda pendiente y se reintenta en la próxima sincronización.
- * 3. **Subida antes que bajada.** [sincronizar] primero sube lo pendiente y después
- *    descarga todo y hace upsert por `remoteId`; así lo recién creado offline no se
- *    pierde ni se duplica.
- * 4. **Un solo proceso a la vez.** Un [Mutex] serializa subidas y bajadas para que un
- *    pull-to-refresh y un write-through simultáneos no suban dos veces lo mismo.
- *
- * Los ids locales nunca cambian (las FK de Room siguen siendo válidas); la traducción
- * local ↔ remoto se hace con la columna `remoteId` de cada entidad.
- */
 class SincronizacionRepository(
     private val database: AppDatabase,
     private val remoto: RemoteDataSource,
@@ -83,7 +65,6 @@ class SincronizacionRepository(
     }.distinctUntilChanged()
 
     init {
-        // Cuando la red vuelve, sube lo pendiente y refresca sin esperar al usuario.
         scope.launch {
             conectividad.hayRed.drop(1).filter { it }.collect { sincronizar() }
         }
@@ -93,7 +74,6 @@ class SincronizacionRepository(
         scope.launch { sincronizar() }
     }
 
-    /** Write-through: se llama después de cada escritura local. */
     fun subirPendientesEnSegundoPlano() {
         scope.launch {
             mutex.withLock {
@@ -106,7 +86,6 @@ class SincronizacionRepository(
         }
     }
 
-    /** Sincronización completa (subida + bajada). Devuelve y publica el resultado. */
     suspend fun sincronizar(): Resource<Long> = mutex.withLock {
         _estado.value = Resource.Loading
         val resultado = when (val subida = subirPendientes()) {
@@ -121,14 +100,6 @@ class SincronizacionRepository(
         estado
     }
 
-    // ------------------------------------------------------------------ Subida
-
-    /**
-     * Sube grupos → miembros → gastos → pagos, en ese orden, porque cada nivel necesita
-     * el `remoteId` del anterior. Un error de conexión o 5xx corta la subida (no tiene
-     * sentido seguir); un 4xx solo descarta ese registro de esta ronda para que un dato
-     * inválido no bloquee la cola entera, y se informa al final.
-     */
     private suspend fun subirPendientes(): Resource<Unit> {
         var errorDeDatos: Resource.Error? = null
         fun registrar(error: Resource.Error, descripcion: String): Resource.Error? {
@@ -150,7 +121,6 @@ class SincronizacionRepository(
             when (val r = remoto.llamar { crearGrupo(request) }) {
                 is Resource.Success -> database.withTransaction {
                     grupoDao.marcarSincronizado(grupo.id, r.data.id)
-                    // El backend devuelve los miembros en el mismo orden en que se enviaron
                     r.data.miembros.zip(miembros).forEach { (remoto, local) ->
                         miembroDao.marcarSincronizado(local.id, remoto.id)
                     }
@@ -160,7 +130,6 @@ class SincronizacionRepository(
             }
         }
 
-        // Miembros agregados después de que su grupo ya existía en el servidor
         for (miembro in miembroDao.obtenerPendientes()) {
             val grupoRemoteId = grupoDao.obtener(miembro.grupoId)?.remoteId ?: continue
             val request = CrearMiembroRequest(miembro.nombre, miembro.esUsuarioActual, miembro.colorAvatarHex)
@@ -176,8 +145,6 @@ class SincronizacionRepository(
             val remotoPorLocal = miembroDao.obtenerMiembros(gasto.grupoId)
                 .associate { it.id to it.remoteId }
             val pagadoPor = remotoPorLocal[gasto.pagadoPorId] ?: continue
-            // Mismo orden que al dividir localmente: el servidor asigna el céntimo
-            // sobrante a los primeros de la lista, igual que BalanceCalculator.
             val participantes = gastoDao.obtenerParticipantes(gasto.id).map { remotoPorLocal[it.miembroId] }
             if (participantes.isEmpty() || participantes.any { it == null }) continue
 
@@ -218,13 +185,6 @@ class SincronizacionRepository(
         return errorDeDatos ?: Resource.Success(Unit)
     }
 
-    // ------------------------------------------------------------------ Bajada
-
-    /**
-     * Trae todos los grupos y, por cada uno, sus gastos y pagos, y hace upsert en Room.
-     * El servidor gana sobre los registros ya sincronizados; los pendientes locales
-     * (sin `remoteId`) no se tocan.
-     */
     private suspend fun descargarTodo(): Resource<Unit> {
         val grupos = when (val r = remoto.llamar { listarGrupos() }) {
             is Resource.Success -> r.data
@@ -244,7 +204,6 @@ class SincronizacionRepository(
                 Resource.Loading -> return Resource.Loading
             }
 
-            // Una transacción por grupo: la UI nunca ve un grupo a medio importar
             database.withTransaction {
                 val grupoId = upsertGrupo(grupoDto)
                 val localPorRemoto = grupoDto.miembros.associate { it.id to upsertMiembro(it, grupoId) }
@@ -318,7 +277,6 @@ class SincronizacionRepository(
         if (existente == null) pagoDao.insertar(entidad) else pagoDao.actualizar(entidad)
     }
 
-    /** El reparto del servidor es el definitivo (mismo algoritmo, pero manda el backend). */
     private suspend fun reemplazarParticipantes(gastoIdLocal: Long, dto: GastoDto, localPorRemoto: Map<Long, Long>) {
         val participantes = dto.participantes.mapNotNull { p ->
             localPorRemoto[p.miembroId]?.let { GastoParticipanteEntity(gastoId = gastoIdLocal, miembroId = it, montoAsignado = p.montoAsignado) }

@@ -26,17 +26,12 @@ import com.entreamigos.app.data.model.Miembro
 import com.entreamigos.app.util.CurrencyFormatter
 import com.entreamigos.app.util.DateFormatter
 
-/** "Pagado por Ana" / "Pagado por ti" (el mockup usa "tú", pero tras preposición va "ti"). */
 fun textoPagadoPor(miembro: Miembro): String =
     if (miembro.esUsuarioActual) "Pagado por ti" else "Pagado por ${miembro.nombre}"
 
 fun textoDivididoEntre(personas: Int): String =
     "Dividido entre $personas persona" + if (personas == 1) "" else "s"
 
-/**
- * Fila de gasto común a Home y a la actividad del grupo: ícono de categoría, título,
- * líneas secundarias, y monto + fecha a la derecha.
- */
 @Composable
 private fun FilaGasto(
     gasto: Gasto,
@@ -80,7 +75,6 @@ private fun FilaGasto(
     }
 }
 
-/** Gasto dentro de un grupo (pestañas Resumen y Gastos). En el mockup, el monto va en morado. */
 @Composable
 fun GastoItem(gasto: Gasto, modifier: Modifier = Modifier, colorMonto: Color = MaterialTheme.colorScheme.secondary) {
     FilaGasto(
@@ -91,7 +85,6 @@ fun GastoItem(gasto: Gasto, modifier: Modifier = Modifier, colorMonto: Color = M
     )
 }
 
-/** Gasto en "Gastos recientes" de Home: muestra a qué grupo pertenece. Monto en verde. */
 @Composable
 fun GastoRecienteItem(item: ActividadItem, modifier: Modifier = Modifier) {
     FilaGasto(
@@ -102,7 +95,6 @@ fun GastoRecienteItem(item: ActividadItem, modifier: Modifier = Modifier) {
     )
 }
 
-/** Fila de "¿Quién debe a quién?": avatar, nombre, relación con el usuario, monto y chevron. */
 @Composable
 fun DeudaItem(
     deuda: Deuda,

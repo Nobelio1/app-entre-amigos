@@ -3,12 +3,6 @@ package com.entreamigos.backend.db
 import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.Table
 
-/*
- * Mapeo Exposed de las tablas creadas por Flyway (V1__esquema_inicial.sql).
- * Exposed NO crea el esquema: la migración SQL es la única fuente del DDL, así
- * evitamos que dos herramientas compitan por definir las mismas tablas.
- */
-
 object Grupos : Table("grupos") {
     val id = long("id").autoIncrement()
     val nombre = varchar("nombre", 120)

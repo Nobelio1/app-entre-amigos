@@ -25,11 +25,8 @@ interface MiembroDao {
     @Delete
     suspend fun eliminar(miembro: MiembroEntity)
 
-    /** Nombres con los que el usuario se registró en sus grupos, del más reciente al más antiguo. */
     @Query("SELECT nombre FROM miembros WHERE esUsuarioActual = 1 ORDER BY id DESC")
     fun observarNombresUsuarioActual(): Flow<List<String>>
-
-    // ---- Sincronización con el backend ----
 
     @Update
     suspend fun actualizar(miembro: MiembroEntity)

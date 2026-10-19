@@ -151,7 +151,6 @@ class GastoService(private val grupoService: GrupoService) {
         )
     }
 
-    /** Historial combinado de gastos y pagos, del más reciente al más antiguo. */
     suspend fun obtenerActividad(grupoId: Long, limite: Int): List<ActividadDto> = consulta {
         val nombres = miembrosOFallar(grupoId).associate { it.id to it.nombre }
         val gastos = gastosDe(grupoId).map {
@@ -239,7 +238,6 @@ class GastoService(private val grupoService: GrupoService) {
             )
 
     companion object {
-        /** Coincide con NUMERIC(12,2) en Postgres (10 dígitos enteros). */
         private const val MONTO_MAXIMO = 9_999_999_999.99
     }
 }

@@ -11,19 +11,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 
-/**
- * Inyección de dependencias manual (el proyecto no justifica todavía Hilt).
- * Vive en EntreAmigosApp, así que todo lo que cuelga de aquí es un singleton de proceso.
- */
 class AppContainer(context: Context) {
 
     private val database = AppDatabase.getInstance(context)
 
-    /**
-     * Scope de aplicación para el trabajo que debe sobrevivir a una pantalla (por
-     * ejemplo, terminar de subir un gasto aunque el usuario ya salió del formulario).
-     * SupervisorJob: el fallo de una sincronización no cancela las siguientes.
-     */
     private val scopeAplicacion = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val remoteDataSource = RemoteDataSource(

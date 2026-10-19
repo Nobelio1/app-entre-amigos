@@ -65,7 +65,6 @@ class GrupoService {
         }
     }
 
-    /** Debe llamarse dentro de una transacción. Devuelve null si el grupo no existe. */
     fun miembrosDe(grupoId: Long): List<MiembroDto>? {
         val existe = Grupos.selectAll().where { Grupos.id eq grupoId }.any()
         if (!existe) return null
@@ -108,7 +107,6 @@ class GrupoService {
     companion object {
         private val COLOR_HEX = Regex("^#[0-9A-Fa-f]{6}$")
 
-        /** Misma paleta que `GrupoRepository.PALETA_AVATARES` en la app. */
         val PALETA_AVATARES = listOf("#EF5350", "#42A5F5", "#66BB6A", "#AB47BC", "#FFA726", "#26C6DA")
     }
 }

@@ -61,7 +61,6 @@ fun AvatarMiembro(miembro: Miembro, modifier: Modifier = Modifier) {
     AvatarInicial(nombre = miembro.nombre, colorHex = miembro.colorAvatarHex, modifier = modifier)
 }
 
-/** Verde/rojo de saldos; en modo oscuro se aclaran para mantener contraste AA. */
 @Composable
 fun colorDeBalance(monto: Double): Color {
     val oscuro = isSystemInDarkTheme()
@@ -72,13 +71,8 @@ fun colorDeBalance(monto: Double): Color {
     }
 }
 
-/** Forma y borde comunes de las tarjetas del mockup (blancas, esquinas de 14dp, borde sutil). */
 val FormaTarjeta = RoundedCornerShape(14.dp)
 
-/**
- * Tarjeta estándar de la app. El mockup usa una sombra muy suave más un borde de 1dp;
- * con solo elevación, en pantallas de bajo contraste la tarjeta se pierde en el fondo.
- */
 @Composable
 fun TarjetaEntreAmigos(
     modifier: Modifier = Modifier,
@@ -95,7 +89,6 @@ fun TarjetaEntreAmigos(
     }
 }
 
-/** Título de sección con acción opcional a la derecha ("Ver todos", "Crear grupo"). */
 @Composable
 fun EncabezadoSeccion(
     titulo: String,
@@ -115,7 +108,6 @@ fun EncabezadoSeccion(
     }
 }
 
-/** Acción de texto compacta para [EncabezadoSeccion]. */
 @Composable
 fun AccionSeccion(texto: String, color: Color, onClick: () -> Unit, icono: ImageVector? = null) {
     TextButton(onClick = onClick, contentPadding = PaddingValues(horizontal = 8.dp)) {
@@ -126,11 +118,6 @@ fun AccionSeccion(texto: String, color: Color, onClick: () -> Unit, icono: Image
     }
 }
 
-/**
- * Pide íconos claros u oscuros en la barra de estado mientras la pantalla está visible
- * y restaura el valor anterior al salir. Necesario con edge-to-edge: Home y Detalle
- * pintan su header (oscuro) detrás de la barra de estado; el resto de pantallas no.
- */
 @Composable
 fun IconosBarraDeEstado(claros: Boolean) {
     val vista = LocalView.current

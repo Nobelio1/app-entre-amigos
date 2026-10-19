@@ -1,11 +1,3 @@
--- Esquema inicial de EntreAmigos.
--- Es un port 1:1 de las entidades Room de la app Android (data/local/entity),
--- que siguen siendo la fuente de verdad del modelo. Diferencias deliberadas:
---   * Los montos usan NUMERIC(12,2) en vez de REAL para no acumular error de
---     punto flotante en el servidor.
---   * Las fechas se guardan como epoch en milisegundos (BIGINT), igual que en
---     Room, para que el cliente no tenga que convertir zonas horarias.
-
 CREATE TABLE grupos (
     id              BIGSERIAL PRIMARY KEY,
     nombre          VARCHAR(120) NOT NULL CHECK (length(trim(nombre)) > 0),

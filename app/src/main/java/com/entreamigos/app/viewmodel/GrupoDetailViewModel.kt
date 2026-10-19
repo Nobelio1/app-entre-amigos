@@ -55,10 +55,6 @@ class GrupoDetailViewModel(
     private val sincronizacion: SincronizacionRepository
 ) : ViewModel() {
 
-    /**
-     * `Loading` hasta que Room emite por primera vez; `Error` si el grupo no existe
-     * (por ejemplo, se abrió un id obsoleto) o la consulta falla.
-     */
     val uiState: StateFlow<Resource<GrupoDetailUiState>> = combine(
         grupoRepository.observarGrupo(grupoId),
         grupoRepository.observarMiembros(grupoId),

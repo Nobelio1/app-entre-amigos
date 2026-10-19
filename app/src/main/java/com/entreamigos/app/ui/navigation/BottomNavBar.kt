@@ -44,11 +44,6 @@ enum class BottomDestino(
     PERFIL("Perfil", Icons.Outlined.Person, Icons.Filled.Person, Screen.Perfil.route)
 }
 
-/**
- * Barra inferior del mockup: fondo blanco con esquinas superiores redondeadas, sin la
- * "píldora" de selección de Material 3 (el destino activo solo cambia a ícono relleno y
- * color verde) y la acción "Crear" como botón circular verde en el centro, sin etiqueta.
- */
 @Composable
 fun EntreAmigosBottomBar(rutaActual: String?, onNavegar: (BottomDestino) -> Unit) {
     val colorActivo = MaterialTheme.colorScheme.primary

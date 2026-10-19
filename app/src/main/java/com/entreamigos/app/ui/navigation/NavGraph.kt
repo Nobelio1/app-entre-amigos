@@ -39,8 +39,6 @@ fun EntreAmigosNavGraph(
         Screen.Home.route, "grupos", "gastos", Screen.Perfil.route
     )
 
-    // Edge-to-edge: el Scaffold no reserva la barra de estado (cada header la gestiona,
-    // así Home y Detalle pintan su color detrás de ella), solo la barra de navegación.
     Scaffold(
         contentWindowInsets = WindowInsets.navigationBars,
         bottomBar = {
@@ -134,7 +132,6 @@ fun EntreAmigosNavGraph(
     }
 }
 
-/** Navegación entre pestañas de la barra inferior conservando el estado de cada una. */
 private fun navegarATab(navController: NavHostController, ruta: String) {
     navController.navigate(ruta) {
         popUpTo(navController.graph.findStartDestination().id) { saveState = true }

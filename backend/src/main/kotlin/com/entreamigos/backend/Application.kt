@@ -17,7 +17,6 @@ import io.ktor.server.routing.routing
 
 fun main(args: Array<String>) = EngineMain.main(args)
 
-/** Módulo principal; se referencia desde application.conf. */
 fun Application.module() {
     val config = environment.config
     DatabaseFactory.inicializar(
@@ -31,10 +30,6 @@ fun Application.module() {
     moduloApi(GrupoService())
 }
 
-/**
- * Plugins y rutas, separados de la conexión a la base para poder montarlos en
- * tests con `testApplication` sin necesitar un Postgres real.
- */
 fun Application.moduloApi(grupoService: GrupoService) {
     configurarSerializacion()
     configurarLogs()

@@ -8,21 +8,12 @@ import kotlinx.serialization.SerializationException
 import retrofit2.HttpException
 import java.io.IOException
 
-/**
- * Puerta única hacia el backend. Convierte cualquier llamada de [EntreAmigosApi] en un
- * [Resource] para que ninguna excepción de red llegue a los repositorios o a la UI:
- *
- * - IOException (sin red, timeout, servidor apagado) → `Error(SIN_CONEXION)`
- * - HTTP 4xx → `Error(SOLICITUD_INVALIDA)` con el mensaje de `{"error": ...}`
- * - HTTP 5xx o JSON ilegible → `Error(SERVIDOR)`
- */
 class RemoteDataSource(private val api: EntreAmigosApi) {
 
     suspend fun <T> llamar(bloque: suspend EntreAmigosApi.() -> T): Resource<T> =
         try {
             Resource.Success(api.bloque())
         } catch (e: CancellationException) {
-            // Nunca tragarse la cancelación de la corrutina
             throw e
         } catch (e: HttpException) {
             val mensaje = extraerMensaje(e) ?: "El servidor respondió con el código ${e.code()}"

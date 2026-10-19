@@ -23,7 +23,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 
-/** Igual que GrupoRepository: lectura desde Room, escritura local + write-through. */
 class GastoRepository(
     private val database: AppDatabase,
     private val gastoDao: GastoDao,
@@ -156,7 +155,6 @@ class GastoRepository(
             }
         }
 
-    /** Badge de la campana: gastos de otros miembros desde la última vez que se miró. */
     @OptIn(ExperimentalCoroutinesApi::class)
     fun observarGastosNoVistos(): Flow<Int> =
         preferencias.ultimaVistaNotificaciones.flatMapLatest { gastoDao.observarGastosDeOtrosDesde(it) }

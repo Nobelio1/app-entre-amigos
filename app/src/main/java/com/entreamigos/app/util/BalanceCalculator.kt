@@ -79,14 +79,6 @@ object BalanceCalculator {
         return resultado
     }
 
-    /**
-     * Divide [monto] en partes iguales trabajando en céntimos enteros: los primeros
-     * participantes (en el orden recibido) absorben el céntimo sobrante, de modo que
-     * la suma de las partes siempre es exactamente el monto (100 / 3 → 33.34, 33.33, 33.33).
-     *
-     * Es la misma regla que aplica el backend (`backend/.../domain/BalanceCalculator.kt`),
-     * así el reparto calculado offline coincide con el que devuelve el servidor.
-     */
     fun dividirEnPartesIguales(monto: Double, participantesIds: List<Long>): List<Pair<Long, Double>> {
         require(participantesIds.isNotEmpty()) { "Se necesita al menos un participante" }
         val totalCentavos = Math.round(monto * 100)

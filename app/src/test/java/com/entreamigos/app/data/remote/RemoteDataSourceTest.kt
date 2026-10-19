@@ -19,10 +19,6 @@ import org.junit.Before
 import org.junit.Test
 import java.util.concurrent.TimeUnit
 
-/**
- * Prueba la integración Retrofit + kotlinx.serialization + traducción de errores contra
- * un servidor HTTP simulado: lo que viaja por el cable es real, solo el backend es falso.
- */
 class RemoteDataSourceTest {
 
     private lateinit var servidor: MockWebServer
@@ -90,7 +86,6 @@ class RemoteDataSourceTest {
         val cuerpo = Json.parseToJsonElement(peticion.body.readUtf8()).jsonObject
         assertEquals("Cena", cuerpo["descripcion"]!!.jsonPrimitive.content)
         assertEquals(2, cuerpo["participantes"]!!.jsonArray.size)
-        // explicitNulls = false: la fecha nula no se envía
         assertTrue("fecha" !in cuerpo)
     }
 

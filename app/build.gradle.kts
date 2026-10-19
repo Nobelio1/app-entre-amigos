@@ -7,13 +7,6 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
-/**
- * URL del backend por tipo de build. Se puede sobrescribir sin tocar el código en
- * local.properties (no versionado) o con -P en la línea de comandos:
- *   entreamigos.api.url.debug=http://192.168.1.50:8080/   (dispositivo físico en la LAN)
- *   entreamigos.api.url.release=https://api.midominio.com/
- * 10.0.2.2 es la IP con la que el emulador de Android ve el localhost de la máquina.
- */
 val propiedadesLocales = Properties().apply {
     rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
 }
@@ -31,8 +24,8 @@ android {
         applicationId = "com.entreamigos.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.25-alpha"
+        versionCode = 2
+        versionName = "0.50-beta"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -95,8 +88,6 @@ dependencies {
     implementation("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
 
-    // Red: Retrofit + OkHttp con kotlinx.serialization (ya usado por Kotlin, sin reflexión
-    // en runtime a diferencia de Gson; el converter es oficial de Retrofit desde 2.10)
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-kotlinx-serialization:2.11.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")

@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-/** Íconos ofrecidos al crear un grupo; GENERAL queda como valor por defecto interno. */
 val ICONOS_GRUPO = GrupoIcono.entries.filter { it != GrupoIcono.GENERAL }
 
 data class CrearGrupoUiState(

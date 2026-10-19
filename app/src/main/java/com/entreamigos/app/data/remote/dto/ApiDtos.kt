@@ -2,12 +2,6 @@ package com.entreamigos.app.data.remote.dto
 
 import kotlinx.serialization.Serializable
 
-/*
- * Espejo del contrato JSON documentado en backend/API.md. Los ids aquí son SIEMPRE
- * ids del servidor (en Room se guardan como `remoteId`); la traducción a ids locales
- * la hace SincronizacionRepository.
- */
-
 @Serializable
 data class ErrorDto(val error: String)
 

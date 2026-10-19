@@ -62,10 +62,6 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "entreamigos_db"
                 )
-                    // v1 → v2 (emoji → GrupoIcono, columnas de sincronización): el equipo
-                    // confirmó que aún no hay datos reales que preservar. Antes de la
-                    // Fase 4 esto debe reemplazarse por objetos Migration explícitos;
-                    // a partir de v2 el backend también es respaldo de los datos.
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instancia

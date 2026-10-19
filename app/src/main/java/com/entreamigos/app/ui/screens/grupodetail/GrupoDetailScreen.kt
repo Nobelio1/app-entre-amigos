@@ -68,7 +68,6 @@ import com.entreamigos.app.util.compartirResumenGrupo
 import com.entreamigos.app.viewmodel.GrupoDetailUiState
 import com.entreamigos.app.viewmodel.GrupoDetailViewModel
 
-/** Pestañas con los íconos del mockup: gráfico circular, lista, personas y barras. */
 private enum class PestanaGrupo(val titulo: String, val icono: ImageVector, val iconoActivo: ImageVector) {
     RESUMEN("Resumen", Icons.Outlined.PieChart, Icons.Filled.PieChart),
     GASTOS("Gastos", Icons.AutoMirrored.Outlined.ReceiptLong, Icons.AutoMirrored.Outlined.ReceiptLong),
@@ -146,7 +145,6 @@ private fun HeaderGrupo(uiState: GrupoDetailUiState?, onVolver: () -> Unit, onSi
         }
         val grupo = uiState?.grupo
         if (grupo != null) {
-            // Avatar del grupo: círculo blanco con borde suave, como la foto del mockup
             Surface(shape = CircleShape, color = Color.White, border = BorderStroke(2.dp, Color.White.copy(alpha = 0.6f))) {
                 IconoCircular(estilo = estiloGrupo(grupo.icono), tamano = 48.dp, relleno = false)
             }
@@ -194,7 +192,6 @@ private fun HeaderGrupo(uiState: GrupoDetailUiState?, onVolver: () -> Unit, onSi
     }
 }
 
-/** Tarjeta blanca de pestañas que se superpone al header morado (ícono sobre texto). */
 @Composable
 private fun TarjetaPestanas(seleccionada: Int, onSeleccionar: (Int) -> Unit) {
     val colorActivo = MaterialTheme.colorScheme.secondary

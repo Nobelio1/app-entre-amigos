@@ -17,7 +17,6 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 
-/** Contrato documentado en backend/API.md. */
 fun Route.rutasGrupos(grupoService: GrupoService, gastoService: GastoService) {
     route("/grupos") {
         get { call.respond(grupoService.listar()) }
