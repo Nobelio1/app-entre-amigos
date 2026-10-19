@@ -1,6 +1,8 @@
 package com.entreamigos.app.ui.navigation
 
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -37,18 +39,17 @@ fun EntreAmigosNavGraph(
         Screen.Home.route, "grupos", "gastos", Screen.Perfil.route
     )
 
+    // Edge-to-edge: el Scaffold no reserva la barra de estado (cada header la gestiona,
+    // así Home y Detalle pintan su color detrás de ella), solo la barra de navegación.
     Scaffold(
+        contentWindowInsets = WindowInsets.navigationBars,
         bottomBar = {
             if (mostrarBottomBar) {
                 EntreAmigosBottomBar(rutaActual = rutaActual) { destino ->
                     if (destino == BottomDestino.CREAR) {
                         navController.navigate(Screen.CrearGrupo.route)
                     } else {
-                        navController.navigate(destino.ruta) {
-                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
+                        navegarATab(navController, destino.ruta)
                     }
                 }
             }
@@ -66,19 +67,16 @@ fun EntreAmigosNavGraph(
                     sincronizacionRepository = sincronizacionRepository,
                     onGrupoClick = { grupoId -> navController.navigate(Screen.GrupoDetail.crearRuta(grupoId)) },
                     onCrearGrupoClick = { navController.navigate(Screen.CrearGrupo.route) },
-                    onVerTodosGastosClick = {
-                        navController.navigate("gastos") {
-                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    }
+                    onVerTodosGastosClick = { navegarATab(navController, "gastos") },
+                    onNotificacionesClick = { navegarATab(navController, "gastos") },
+                    onPerfilClick = { navegarATab(navController, Screen.Perfil.route) }
                 )
             }
 
             composable("grupos") {
                 GruposScreen(
                     grupoRepository = grupoRepository,
+                    gastoRepository = gastoRepository,
                     sincronizacionRepository = sincronizacionRepository,
                     onGrupoClick = { grupoId -> navController.navigate(Screen.GrupoDetail.crearRuta(grupoId)) }
                 )
@@ -133,5 +131,14 @@ fun EntreAmigosNavGraph(
                 )
             }
         }
+    }
+}
+
+/** Navegación entre pestañas de la barra inferior conservando el estado de cada una. */
+private fun navegarATab(navController: NavHostController, ruta: String) {
+    navController.navigate(ruta) {
+        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
     }
 }

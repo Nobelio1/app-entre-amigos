@@ -3,6 +3,7 @@ package com.entreamigos.app.data.repository
 import android.content.Context
 import com.entreamigos.app.BuildConfig
 import com.entreamigos.app.data.local.AppDatabase
+import com.entreamigos.app.data.local.PreferenciasUsuario
 import com.entreamigos.app.data.remote.ConectividadMonitor
 import com.entreamigos.app.data.remote.NetworkModule
 import com.entreamigos.app.data.remote.RemoteDataSource
@@ -56,7 +57,8 @@ class AppContainer(context: Context) {
             miembroDao = database.miembroDao(),
             pagoDao = database.pagoDao(),
             grupoDao = database.grupoDao(),
-            sincronizacion = sincronizacionRepository
+            sincronizacion = sincronizacionRepository,
+            preferencias = PreferenciasUsuario(context.applicationContext)
         )
     }
 }

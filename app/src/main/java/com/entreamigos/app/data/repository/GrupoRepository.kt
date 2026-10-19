@@ -17,6 +17,7 @@ import com.entreamigos.app.data.model.ResumenGrupo
 import com.entreamigos.app.util.BalanceCalculator
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 
 /**
  * Las lecturas salen siempre de Room. Las escrituras se guardan primero en local y
@@ -110,7 +111,17 @@ class GrupoRepository(
             )
         }
 
+    /**
+     * Nombre real del usuario para el saludo de Home. "Tú" es el valor por defecto del
+     * formulario de crear grupo, así que no sirve como nombre: si no hay otro, null.
+     */
+    fun observarNombreUsuarioActual(): Flow<String?> =
+        miembroDao.observarNombresUsuarioActual().map { nombres ->
+            nombres.map { it.trim() }.firstOrNull { it.isNotEmpty() && !it.equals(NOMBRE_POR_DEFECTO, ignoreCase = true) }
+        }
+
     companion object {
+        const val NOMBRE_POR_DEFECTO = "Tú"
         val PALETA_AVATARES = listOf("#EF5350", "#42A5F5", "#66BB6A", "#AB47BC", "#FFA726", "#26C6DA")
     }
 }

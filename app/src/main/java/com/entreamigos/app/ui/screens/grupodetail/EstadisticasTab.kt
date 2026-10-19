@@ -22,7 +22,6 @@ import androidx.compose.ui.unit.dp
 import com.entreamigos.app.ui.components.IconoCircular
 import com.entreamigos.app.ui.components.estiloCategoria
 import com.entreamigos.app.ui.components.nombreCategoria
-import com.entreamigos.app.ui.theme.MoradoGrupo
 import com.entreamigos.app.util.CurrencyFormatter
 import com.entreamigos.app.viewmodel.GrupoDetailUiState
 
@@ -83,7 +82,7 @@ private fun BarraDeProgreso(porcentaje: Float, modifier: Modifier = Modifier) {
             modifier = Modifier
                 .fillMaxWidth(porcentaje.coerceIn(0f, 1f))
                 .height(10.dp)
-                .background(MoradoGrupo, RoundedCornerShape(6.dp))
+                .background(MaterialTheme.colorScheme.secondary, RoundedCornerShape(6.dp))
         )
     }
 }

@@ -13,20 +13,28 @@ import androidx.compose.ui.platform.LocalContext
 private val LightColors = lightColorScheme(
     primary = VerdeInicio,
     onPrimary = SuperficieClara,
-    secondary = MoradoGrupo,
+    secondary = MoradoAccion,
     onSecondary = SuperficieClara,
     background = FondoClaro,
+    onBackground = TextoPrincipalClaro,
     surface = SuperficieClara,
+    // Sin tinte tonal: el mockup usa tarjetas blancas puras (la profundidad la dan sombra y borde)
+    surfaceTint = SuperficieClara,
+    onSurface = TextoPrincipalClaro,
+    onSurfaceVariant = TextoSecundarioClaro,
+    outlineVariant = BordeTarjetaClaro,
     error = RojoSaldoNegativo
 )
 
 private val DarkColors = darkColorScheme(
-    primary = VerdeInicioOscuro,
-    onPrimary = SuperficieClara,
+    primary = VerdeMenta,
+    onPrimary = VerdeInicioOscuro,
     secondary = MoradoGrupoClaro,
     onSecondary = SuperficieClara,
     background = FondoOscuro,
     surface = SuperficieOscura,
+    onSurfaceVariant = TextoSecundarioOscuro,
+    outlineVariant = BordeTarjetaOscuro,
     error = RojoSaldoNegativo
 )
 

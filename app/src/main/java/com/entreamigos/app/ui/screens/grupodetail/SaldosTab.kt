@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -83,7 +84,7 @@ fun SaldosTab(uiState: GrupoDetailUiState, onLiquidar: (Deuda) -> Unit) {
                         )
                     }
                     TextButton(onClick = { deudaSeleccionada = deuda }) {
-                        Text("Marcar pagada")
+                        Text("Marcar pagada", color = MaterialTheme.colorScheme.secondary)
                     }
                 }
             }
@@ -91,7 +92,8 @@ fun SaldosTab(uiState: GrupoDetailUiState, onLiquidar: (Deuda) -> Unit) {
                 Button(
                     onClick = { uiState.deudas.firstOrNull()?.let { deudaSeleccionada = it } },
                     enabled = uiState.deudas.isNotEmpty(),
-                    modifier = Modifier.fillMaxWidth()
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
                 ) {
                     Text("Liquidar deudas")
                 }
@@ -111,10 +113,13 @@ fun SaldosTab(uiState: GrupoDetailUiState, onLiquidar: (Deuda) -> Unit) {
                 )
             },
             confirmButton = {
-                Button(onClick = {
-                    onLiquidar(deuda)
-                    deudaSeleccionada = null
-                }) { Text("Sí, marcar como pagada") }
+                Button(
+                    onClick = {
+                        onLiquidar(deuda)
+                        deudaSeleccionada = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                ) { Text("Sí, marcar como pagada") }
             },
             dismissButton = {
                 OutlinedButton(onClick = { deudaSeleccionada = null }) { Text("Cancelar") }

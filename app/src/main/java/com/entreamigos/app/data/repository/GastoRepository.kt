@@ -2,6 +2,7 @@ package com.entreamigos.app.data.repository
 
 import androidx.room.withTransaction
 import com.entreamigos.app.data.local.AppDatabase
+import com.entreamigos.app.data.local.PreferenciasUsuario
 import com.entreamigos.app.data.local.dao.GastoDao
 import com.entreamigos.app.data.local.dao.GrupoDao
 import com.entreamigos.app.data.local.dao.MiembroDao
@@ -18,7 +19,9 @@ import com.entreamigos.app.data.model.Gasto
 import com.entreamigos.app.data.model.Miembro
 import com.entreamigos.app.util.BalanceCalculator
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 
 /** Igual que GrupoRepository: lectura desde Room, escritura local + write-through. */
 class GastoRepository(
@@ -27,7 +30,8 @@ class GastoRepository(
     private val miembroDao: MiembroDao,
     private val pagoDao: PagoDao,
     private val grupoDao: GrupoDao,
-    private val sincronizacion: SincronizacionRepository
+    private val sincronizacion: SincronizacionRepository,
+    private val preferencias: PreferenciasUsuario
 ) {
 
     suspend fun registrarGasto(
@@ -124,11 +128,13 @@ class GastoRepository(
     fun observarActividadGlobal(): Flow<List<ActividadItem>> =
         combine(
             gastoDao.observarTodosLosGastos(),
+            gastoDao.observarTodosLosParticipantes(),
             miembroDao.observarTodosLosMiembros(),
             grupoDao.observarGrupos()
-        ) { gastos, miembros, grupos ->
+        ) { gastos, participaciones, miembros, grupos ->
             val miembroPorId = miembros.associateBy { it.id }
             val grupoPorId = grupos.associateBy { it.id }
+            val participantesPorGasto = participaciones.groupBy({ it.gastoId }, { it.miembroId })
             gastos.mapNotNull { gasto ->
                 val grupo = grupoPorId[gasto.grupoId] ?: return@mapNotNull null
                 val pagador = miembroPorId[gasto.pagadoPorId]?.toModel()
@@ -141,13 +147,21 @@ class GastoRepository(
                         pagadoPor = pagador,
                         categoria = gasto.categoria,
                         fecha = gasto.fecha,
-                        participantes = emptyList()
+                        participantes = participantesPorGasto[gasto.id].orEmpty()
+                            .mapNotNull { miembroPorId[it]?.toModel() }
                     ),
                     nombreGrupo = grupo.nombre,
                     iconoGrupo = grupo.icono
                 )
             }
         }
+
+    /** Badge de la campana: gastos de otros miembros desde la última vez que se miró. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun observarGastosNoVistos(): Flow<Int> =
+        preferencias.ultimaVistaNotificaciones.flatMapLatest { gastoDao.observarGastosDeOtrosDesde(it) }
+
+    fun marcarNotificacionesVistas() = preferencias.marcarNotificacionesVistas()
 
     private fun MiembroEntity.toModel() = Miembro(
         id = id,

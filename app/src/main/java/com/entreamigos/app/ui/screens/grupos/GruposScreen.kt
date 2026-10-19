@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.entreamigos.app.data.model.Resource
+import com.entreamigos.app.data.repository.GastoRepository
 import com.entreamigos.app.data.repository.GrupoRepository
 import com.entreamigos.app.data.repository.SincronizacionRepository
 import com.entreamigos.app.ui.components.BannerConexion
@@ -30,10 +31,13 @@ import com.entreamigos.app.viewmodel.HomeViewModel
 @Composable
 fun GruposScreen(
     grupoRepository: GrupoRepository,
+    gastoRepository: GastoRepository,
     sincronizacionRepository: SincronizacionRepository,
     onGrupoClick: (Long) -> Unit
 ) {
-    val viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory(grupoRepository, sincronizacionRepository))
+    val viewModel: HomeViewModel = viewModel(
+        factory = HomeViewModel.Factory(grupoRepository, gastoRepository, sincronizacionRepository)
+    )
     val grupos by viewModel.grupos.collectAsStateWithLifecycle()
     val conexion by viewModel.conexion.collectAsStateWithLifecycle()
 
