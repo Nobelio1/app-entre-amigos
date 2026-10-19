@@ -1,0 +1,40 @@
+# Levanta la base de datos y la API de EntreAmigos:  docker compose up -d
+# Las credenciales se leen de .env (copiar desde .env.example); si no existe,
+# se usan los valores por defecto de desarrollo indicados con ":-".
+name: entreamigos
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-entreamigos}
+      POSTGRES_USER: ${POSTGRES_USER:-entreamigos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-entreamigos}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - entreamigos_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-entreamigos}
+      DB_USER: ${POSTGRES_USER:-entreamigos}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-entreamigos}
+      PORT: 8080
+    ports:
+      - "${API_PORT:-8080}:8080"
+
+volumes:
+  entreamigos_db_data:
