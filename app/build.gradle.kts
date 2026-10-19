@@ -1,7 +1,26 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp")
+    id("org.jetbrains.kotlin.plugin.serialization")
+}
+
+/**
+ * URL del backend por tipo de build. Se puede sobrescribir sin tocar el código en
+ * local.properties (no versionado) o con -P en la línea de comandos:
+ *   entreamigos.api.url.debug=http://192.168.1.50:8080/   (dispositivo físico en la LAN)
+ *   entreamigos.api.url.release=https://api.midominio.com/
+ * 10.0.2.2 es la IP con la que el emulador de Android ve el localhost de la máquina.
+ */
+val propiedadesLocales = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}
+
+fun urlApi(clave: String, porDefecto: String): String {
+    val valor = (project.findProperty(clave) as String?) ?: propiedadesLocales.getProperty(clave, porDefecto)
+    return "\"" + (if (valor.endsWith("/")) valor else "$valor/") + "\""
 }
 
 android {
@@ -20,7 +39,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField("String", "API_BASE_URL", urlApi("entreamigos.api.url.debug", "http://10.0.2.2:8080/"))
+        }
         release {
+            buildConfigField("String", "API_BASE_URL", urlApi("entreamigos.api.url.release", "http://10.0.2.2:8080/"))
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
@@ -72,7 +95,17 @@ dependencies {
     implementation("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
 
+    // Red: Retrofit + OkHttp con kotlinx.serialization (ya usado por Kotlin, sin reflexión
+    // en runtime a diferencia de Gson; el converter es oficial de Retrofit desde 2.10)
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-kotlinx-serialization:2.11.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+
     testImplementation("junit:junit:4.13.2")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.06.00"))

@@ -29,7 +29,8 @@ private fun EntreAmigosRoot() {
         Surface(modifier = Modifier.fillMaxSize()) {
             EntreAmigosNavGraph(
                 grupoRepository = app.container.grupoRepository,
-                gastoRepository = app.container.gastoRepository
+                gastoRepository = app.container.gastoRepository,
+                sincronizacionRepository = app.container.sincronizacionRepository
             )
         }
     }

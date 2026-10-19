@@ -24,4 +24,18 @@ interface MiembroDao {
 
     @Delete
     suspend fun eliminar(miembro: MiembroEntity)
+
+    // ---- Sincronización con el backend ----
+
+    @Update
+    suspend fun actualizar(miembro: MiembroEntity)
+
+    @Query("SELECT * FROM miembros WHERE remoteId = :remoteId")
+    suspend fun buscarPorRemoteId(remoteId: Long): MiembroEntity?
+
+    @Query("SELECT * FROM miembros WHERE sincronizado = 0 ORDER BY id ASC")
+    suspend fun obtenerPendientes(): List<MiembroEntity>
+
+    @Query("UPDATE miembros SET remoteId = :remoteId, sincronizado = 1 WHERE id = :miembroId")
+    suspend fun marcarSincronizado(miembroId: Long, remoteId: Long)
 }

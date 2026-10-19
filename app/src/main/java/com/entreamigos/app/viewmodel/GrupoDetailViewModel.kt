@@ -6,10 +6,14 @@ import androidx.lifecycle.viewModelScope
 import com.entreamigos.app.data.local.entity.GrupoEntity
 import com.entreamigos.app.data.local.entity.MiembroEntity
 import com.entreamigos.app.data.model.Deuda
+import com.entreamigos.app.data.model.EstadoConexion
+import com.entreamigos.app.data.model.Resource
 import com.entreamigos.app.data.model.EstadisticaCategoria
 import com.entreamigos.app.data.model.Gasto
 import com.entreamigos.app.data.repository.GastoRepository
 import com.entreamigos.app.data.repository.GrupoRepository
+import com.entreamigos.app.data.repository.SincronizacionRepository
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -21,8 +25,7 @@ data class GrupoDetailUiState(
     val miembros: List<MiembroEntity> = emptyList(),
     val gastos: List<Gasto> = emptyList(),
     val deudas: List<Deuda> = emptyList(),
-    val estadisticas: List<EstadisticaCategoria> = emptyList(),
-    val cargando: Boolean = true
+    val estadisticas: List<EstadisticaCategoria> = emptyList()
 ) {
     val balanceUsuarioActual: Double
         get() {
@@ -48,25 +51,42 @@ data class GrupoDetailUiState(
 class GrupoDetailViewModel(
     private val grupoId: Long,
     private val grupoRepository: GrupoRepository,
-    private val gastoRepository: GastoRepository
+    private val gastoRepository: GastoRepository,
+    private val sincronizacion: SincronizacionRepository
 ) : ViewModel() {
 
-    val uiState: StateFlow<GrupoDetailUiState> = combine(
+    /**
+     * `Loading` hasta que Room emite por primera vez; `Error` si el grupo no existe
+     * (por ejemplo, se abrió un id obsoleto) o la consulta falla.
+     */
+    val uiState: StateFlow<Resource<GrupoDetailUiState>> = combine(
         grupoRepository.observarGrupo(grupoId),
         grupoRepository.observarMiembros(grupoId),
         gastoRepository.observarGastosDeGrupo(grupoId),
         gastoRepository.observarDeudasDeGrupo(grupoId),
         gastoRepository.observarEstadisticasDeGrupo(grupoId)
     ) { grupo, miembros, gastos, deudas, estadisticas ->
-        GrupoDetailUiState(
-            grupo = grupo,
-            miembros = miembros,
-            gastos = gastos,
-            deudas = deudas,
-            estadisticas = estadisticas,
-            cargando = false
-        )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GrupoDetailUiState())
+        if (grupo == null) {
+            Resource.Error("Este grupo ya no existe")
+        } else {
+            Resource.Success(
+                GrupoDetailUiState(
+                    grupo = grupo,
+                    miembros = miembros,
+                    gastos = gastos,
+                    deudas = deudas,
+                    estadisticas = estadisticas
+                )
+            )
+        }
+    }
+        .catch { emit(Resource.Error("No se pudo cargar el grupo")) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Resource.Loading)
+
+    val conexion: StateFlow<EstadoConexion> = sincronizacion.estadoConexion
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EstadoConexion())
+
+    fun refrescar() = sincronizacion.sincronizarEnSegundoPlano()
 
     fun liquidarDeuda(deuda: Deuda) {
         viewModelScope.launch {
@@ -82,11 +102,12 @@ class GrupoDetailViewModel(
     class Factory(
         private val grupoId: Long,
         private val grupoRepository: GrupoRepository,
-        private val gastoRepository: GastoRepository
+        private val gastoRepository: GastoRepository,
+        private val sincronizacion: SincronizacionRepository
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return GrupoDetailViewModel(grupoId, grupoRepository, gastoRepository) as T
+            return GrupoDetailViewModel(grupoId, grupoRepository, gastoRepository, sincronizacion) as T
         }
     }
 }

@@ -1,5 +1,7 @@
 package com.entreamigos.app.data.repository
 
+import androidx.room.withTransaction
+import com.entreamigos.app.data.local.AppDatabase
 import com.entreamigos.app.data.local.dao.GastoDao
 import com.entreamigos.app.data.local.dao.GrupoDao
 import com.entreamigos.app.data.local.dao.MiembroDao
@@ -16,11 +18,17 @@ import com.entreamigos.app.util.BalanceCalculator
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 
+/**
+ * Las lecturas salen siempre de Room. Las escrituras se guardan primero en local y
+ * luego se suben al backend en segundo plano (write-through vía [sincronizacion]).
+ */
 class GrupoRepository(
+    private val database: AppDatabase,
     private val grupoDao: GrupoDao,
     private val miembroDao: MiembroDao,
     private val gastoDao: GastoDao,
-    private val pagoDao: PagoDao
+    private val pagoDao: PagoDao,
+    private val sincronizacion: SincronizacionRepository
 ) {
 
     fun observarGrupos(): Flow<List<GrupoEntity>> = grupoDao.observarGrupos()
@@ -30,16 +38,21 @@ class GrupoRepository(
     fun observarMiembros(grupoId: Long): Flow<List<MiembroEntity>> = miembroDao.observarMiembros(grupoId)
 
     suspend fun crearGrupo(nombre: String, icono: GrupoIcono, colorHex: String, nombresMiembros: List<String>): Long {
-        val grupoId = grupoDao.insertar(GrupoEntity(nombre = nombre, icono = icono, colorHex = colorHex))
-        val miembros = nombresMiembros.mapIndexed { index, nombreMiembro ->
-            MiembroEntity(
-                grupoId = grupoId,
-                nombre = nombreMiembro,
-                esUsuarioActual = index == 0,
-                colorAvatarHex = PALETA_AVATARES[index % PALETA_AVATARES.size]
-            )
+        // Transacción: la sincronización nunca debe ver un grupo todavía sin miembros
+        val grupoId = database.withTransaction {
+            val id = grupoDao.insertar(GrupoEntity(nombre = nombre, icono = icono, colorHex = colorHex))
+            val miembros = nombresMiembros.mapIndexed { index, nombreMiembro ->
+                MiembroEntity(
+                    grupoId = id,
+                    nombre = nombreMiembro,
+                    esUsuarioActual = index == 0,
+                    colorAvatarHex = PALETA_AVATARES[index % PALETA_AVATARES.size]
+                )
+            }
+            miembroDao.insertarTodos(miembros)
+            id
         }
-        miembroDao.insertarTodos(miembros)
+        sincronizacion.subirPendientesEnSegundoPlano()
         return grupoId
     }
 

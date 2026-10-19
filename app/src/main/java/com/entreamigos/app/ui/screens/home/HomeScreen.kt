@@ -27,7 +27,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.entreamigos.app.data.repository.GastoRepository
+import com.entreamigos.app.data.model.Resource
 import com.entreamigos.app.data.repository.GrupoRepository
+import com.entreamigos.app.data.repository.SincronizacionRepository
+import com.entreamigos.app.ui.components.BannerConexion
+import com.entreamigos.app.ui.components.ContenedorRefrescable
+import com.entreamigos.app.ui.components.PantallaCargando
+import com.entreamigos.app.ui.components.PantallaError
 import com.entreamigos.app.ui.components.GastoItem
 import com.entreamigos.app.ui.components.GroupCard
 import com.entreamigos.app.ui.components.ResumenGeneralRow
@@ -40,12 +46,14 @@ import com.entreamigos.app.viewmodel.HomeViewModel
 fun HomeScreen(
     grupoRepository: GrupoRepository,
     gastoRepository: GastoRepository,
+    sincronizacionRepository: SincronizacionRepository,
     onGrupoClick: (Long) -> Unit,
     onCrearGrupoClick: () -> Unit,
     onVerTodosGastosClick: () -> Unit
 ) {
-    val viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory(grupoRepository))
-    val grupos by viewModel.grupos.collectAsStateWithLifecycle()
+    val viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory(grupoRepository, sincronizacionRepository))
+    val estadoGrupos by viewModel.grupos.collectAsStateWithLifecycle()
+    val conexion by viewModel.conexion.collectAsStateWithLifecycle()
     val resumen by viewModel.resumenGeneral.collectAsStateWithLifecycle()
 
     val gastosGlobalViewModel: GastosGlobalViewModel = viewModel(factory = GastosGlobalViewModel.Factory(gastoRepository))
@@ -67,7 +75,25 @@ fun HomeScreen(
             },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = VerdeInicio)
         )
+        BannerConexion(estado = conexion, onReintentar = viewModel::refrescar)
 
+        val grupos = when (val estado = estadoGrupos) {
+            Resource.Loading -> {
+                PantallaCargando()
+                return@Column
+            }
+            is Resource.Error -> {
+                PantallaError(estado.mensaje, onReintentar = viewModel::refrescar)
+                return@Column
+            }
+            is Resource.Success -> estado.data
+        }
+
+        ContenedorRefrescable(
+            refrescando = conexion.sincronizando,
+            onRefrescar = viewModel::refrescar,
+            modifier = Modifier.fillMaxSize()
+        ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
@@ -105,7 +131,8 @@ fun HomeScreen(
                     )
                 }
             } else {
-                items(grupos, key = { it.grupoId }) { grupo ->
+                // Prefijos: grupos y gastos comparten este LazyColumn y sus ids pueden coincidir
+                items(grupos, key = { "grupo-${it.grupoId}" }) { grupo ->
                     GroupCard(resumen = grupo, onClick = { onGrupoClick(grupo.grupoId) })
                 }
             }
@@ -136,10 +163,11 @@ fun HomeScreen(
                     )
                 }
             } else {
-                items(actividad.take(3), key = { it.gasto.id }) { item ->
+                items(actividad.take(3), key = { "gasto-${it.gasto.id}" }) { item ->
                     GastoItem(gasto = item.gasto)
                 }
             }
         }
+    }
     }
 }

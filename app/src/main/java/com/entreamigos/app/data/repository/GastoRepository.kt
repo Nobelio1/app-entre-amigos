@@ -1,5 +1,7 @@
 package com.entreamigos.app.data.repository
 
+import androidx.room.withTransaction
+import com.entreamigos.app.data.local.AppDatabase
 import com.entreamigos.app.data.local.dao.GastoDao
 import com.entreamigos.app.data.local.dao.GrupoDao
 import com.entreamigos.app.data.local.dao.MiembroDao
@@ -18,11 +20,14 @@ import com.entreamigos.app.util.BalanceCalculator
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 
+/** Igual que GrupoRepository: lectura desde Room, escritura local + write-through. */
 class GastoRepository(
+    private val database: AppDatabase,
     private val gastoDao: GastoDao,
     private val miembroDao: MiembroDao,
     private val pagoDao: PagoDao,
-    private val grupoDao: GrupoDao
+    private val grupoDao: GrupoDao,
+    private val sincronizacion: SincronizacionRepository
 ) {
 
     suspend fun registrarGasto(
@@ -37,21 +42,24 @@ class GastoRepository(
         require(monto > 0.0) { "El monto debe ser mayor a cero" }
         require(miembrosParticipantesIds.isNotEmpty()) { "Selecciona al menos un participante" }
 
-        val gastoId = gastoDao.insertarGasto(
-            GastoEntity(
-                grupoId = grupoId,
-                descripcion = descripcion.trim(),
-                monto = monto,
-                pagadoPorId = pagadoPorId,
-                categoria = categoria
+        val gastoId = database.withTransaction {
+            val id = gastoDao.insertarGasto(
+                GastoEntity(
+                    grupoId = grupoId,
+                    descripcion = descripcion.trim(),
+                    monto = monto,
+                    pagadoPorId = pagadoPorId,
+                    categoria = categoria
+                )
             )
-        )
-
-        val participantes = BalanceCalculator.dividirEnPartesIguales(monto, miembrosParticipantesIds)
-            .map { (miembroId, montoAsignado) ->
-                GastoParticipanteEntity(gastoId = gastoId, miembroId = miembroId, montoAsignado = montoAsignado)
-            }
-        gastoDao.insertarParticipantes(participantes)
+            val participantes = BalanceCalculator.dividirEnPartesIguales(monto, miembrosParticipantesIds)
+                .map { (miembroId, montoAsignado) ->
+                    GastoParticipanteEntity(gastoId = id, miembroId = miembroId, montoAsignado = montoAsignado)
+                }
+            gastoDao.insertarParticipantes(participantes)
+            id
+        }
+        sincronizacion.subirPendientesEnSegundoPlano()
         return gastoId
     }
 
@@ -108,6 +116,7 @@ class GastoRepository(
         pagoDao.insertar(
             PagoEntity(grupoId = grupoId, deudorId = deudorId, acreedorId = acreedorId, monto = monto)
         )
+        sincronizacion.subirPendientesEnSegundoPlano()
     }
 
     fun observarHistorialPagos(grupoId: Long): Flow<List<PagoEntity>> = pagoDao.observarPagos(grupoId)

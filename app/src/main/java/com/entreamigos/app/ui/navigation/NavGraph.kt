@@ -14,6 +14,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.entreamigos.app.data.repository.GastoRepository
 import com.entreamigos.app.data.repository.GrupoRepository
+import com.entreamigos.app.data.repository.SincronizacionRepository
 import com.entreamigos.app.ui.screens.creargrupo.CrearGrupoScreen
 import com.entreamigos.app.ui.screens.gastos.GastosGlobalScreen
 import com.entreamigos.app.ui.screens.grupodetail.GrupoDetailScreen
@@ -26,6 +27,7 @@ import com.entreamigos.app.ui.screens.registrargasto.RegistrarGastoScreen
 fun EntreAmigosNavGraph(
     grupoRepository: GrupoRepository,
     gastoRepository: GastoRepository,
+    sincronizacionRepository: SincronizacionRepository,
     navController: NavHostController = rememberNavController()
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -61,6 +63,7 @@ fun EntreAmigosNavGraph(
                 HomeScreen(
                     grupoRepository = grupoRepository,
                     gastoRepository = gastoRepository,
+                    sincronizacionRepository = sincronizacionRepository,
                     onGrupoClick = { grupoId -> navController.navigate(Screen.GrupoDetail.crearRuta(grupoId)) },
                     onCrearGrupoClick = { navController.navigate(Screen.CrearGrupo.route) },
                     onVerTodosGastosClick = {
@@ -76,6 +79,7 @@ fun EntreAmigosNavGraph(
             composable("grupos") {
                 GruposScreen(
                     grupoRepository = grupoRepository,
+                    sincronizacionRepository = sincronizacionRepository,
                     onGrupoClick = { grupoId -> navController.navigate(Screen.GrupoDetail.crearRuta(grupoId)) }
                 )
             }
@@ -109,6 +113,7 @@ fun EntreAmigosNavGraph(
                     grupoId = grupoId,
                     grupoRepository = grupoRepository,
                     gastoRepository = gastoRepository,
+                    sincronizacionRepository = sincronizacionRepository,
                     onVolver = { navController.popBackStack() },
                     onRegistrarGastoClick = { navController.navigate(Screen.RegistrarGasto.crearRuta(grupoId)) }
                 )

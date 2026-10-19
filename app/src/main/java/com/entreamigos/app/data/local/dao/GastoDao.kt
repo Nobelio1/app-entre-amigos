@@ -31,4 +31,24 @@ interface GastoDao {
 
     @Delete
     suspend fun eliminarGasto(gasto: GastoEntity)
+
+    // ---- Sincronización con el backend ----
+
+    @Update
+    suspend fun actualizarGasto(gasto: GastoEntity)
+
+    @Query("SELECT * FROM gastos WHERE remoteId = :remoteId")
+    suspend fun buscarPorRemoteId(remoteId: Long): GastoEntity?
+
+    @Query("SELECT * FROM gastos WHERE sincronizado = 0 ORDER BY id ASC")
+    suspend fun obtenerPendientes(): List<GastoEntity>
+
+    @Query("SELECT * FROM gasto_participantes WHERE gastoId = :gastoId ORDER BY id ASC")
+    suspend fun obtenerParticipantes(gastoId: Long): List<GastoParticipanteEntity>
+
+    @Query("DELETE FROM gasto_participantes WHERE gastoId = :gastoId")
+    suspend fun eliminarParticipantes(gastoId: Long)
+
+    @Query("UPDATE gastos SET remoteId = :remoteId, sincronizado = 1 WHERE id = :gastoId")
+    suspend fun marcarSincronizado(gastoId: Long, remoteId: Long)
 }

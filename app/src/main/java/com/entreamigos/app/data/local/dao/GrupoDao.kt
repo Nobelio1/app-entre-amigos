@@ -21,4 +21,21 @@ interface GrupoDao {
 
     @Delete
     suspend fun eliminar(grupo: GrupoEntity)
+
+    // ---- Sincronización con el backend ----
+
+    @Query("SELECT * FROM grupos WHERE id = :grupoId")
+    suspend fun obtener(grupoId: Long): GrupoEntity?
+
+    @Query("SELECT * FROM grupos WHERE remoteId = :remoteId")
+    suspend fun buscarPorRemoteId(remoteId: Long): GrupoEntity?
+
+    @Query("SELECT * FROM grupos WHERE sincronizado = 0 ORDER BY id ASC")
+    suspend fun obtenerPendientes(): List<GrupoEntity>
+
+    @Query("SELECT * FROM grupos WHERE remoteId IS NOT NULL")
+    suspend fun obtenerSincronizados(): List<GrupoEntity>
+
+    @Query("UPDATE grupos SET remoteId = :remoteId, sincronizado = 1 WHERE id = :grupoId")
+    suspend fun marcarSincronizado(grupoId: Long, remoteId: Long)
 }

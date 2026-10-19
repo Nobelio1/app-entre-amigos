@@ -13,5 +13,7 @@ class EntreAmigosApp : Application() {
         super.onCreate()
         container = AppContainer(this)
         NotificationHelper.crearCanalNotificaciones(this)
+        // Sincronización al abrir la app; si no hay backend la UI sigue con Room
+        container.sincronizacionRepository.sincronizarEnSegundoPlano()
     }
 }
