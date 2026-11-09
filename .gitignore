@@ -29,3 +29,18 @@ local.properties
 /backend/.kotlin/
 .kotlin/
 /docs/
+
+# --- Secretos y credenciales (no versionar) ---
+# Configuración de Firebase: cada integrante la descarga de la consola (ver README)
+google-services.json
+GoogleService-Info.plist
+# Claves de firma de Android
+*.jks
+*.keystore
+keystore.properties
+# Cuentas de servicio / claves privadas
+*serviceAccount*.json
+*-firebase-adminsdk-*.json
+*.pem
+*.p12
+*.key

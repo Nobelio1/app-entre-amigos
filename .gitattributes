@@ -1,0 +1,10 @@
+# Scripts que se ejecutan en Linux/Docker deben conservar LF
+gradlew text eol=lf
+*.sh    text eol=lf
+
+# Scripts de Windows
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+
+# Binarios
+*.jar   binary
