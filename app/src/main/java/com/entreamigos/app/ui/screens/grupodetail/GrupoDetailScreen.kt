@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.People
+import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material.icons.outlined.PieChart
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -64,7 +65,9 @@ import com.entreamigos.app.ui.components.PantallaCargando
 import com.entreamigos.app.ui.components.PantallaError
 import com.entreamigos.app.ui.components.estiloGrupo
 import com.entreamigos.app.ui.theme.MoradoGrupo
+import com.entreamigos.app.util.compartirInvitacion
 import com.entreamigos.app.util.compartirResumenGrupo
+import android.widget.Toast
 import com.entreamigos.app.viewmodel.GrupoDetailUiState
 import com.entreamigos.app.viewmodel.GrupoDetailViewModel
 
@@ -82,7 +85,8 @@ fun GrupoDetailScreen(
     gastoRepository: GastoRepository,
     sincronizacionRepository: SincronizacionRepository,
     onVolver: () -> Unit,
-    onRegistrarGastoClick: () -> Unit
+    onRegistrarGastoClick: () -> Unit,
+    onEditarGasto: (Long) -> Unit
 ) {
     val viewModel: GrupoDetailViewModel = viewModel(
         factory = GrupoDetailViewModel.Factory(grupoId, grupoRepository, gastoRepository, sincronizacionRepository)
@@ -120,7 +124,11 @@ fun GrupoDetailScreen(
                         onVerTodosLosGastos = { pestana = PestanaGrupo.GASTOS.ordinal },
                         onIrASaldos = { pestana = PestanaGrupo.SALDOS.ordinal }
                     )
-                    PestanaGrupo.GASTOS -> GastosTab(uiState = actual.data, onRegistrarGastoClick = onRegistrarGastoClick)
+                    PestanaGrupo.GASTOS -> GastosTab(
+                        uiState = actual.data,
+                        onRegistrarGastoClick = onRegistrarGastoClick,
+                        onEditarGasto = onEditarGasto
+                    )
                     PestanaGrupo.SALDOS -> SaldosTab(uiState = actual.data, onLiquidar = viewModel::liquidarDeuda)
                     PestanaGrupo.ESTADISTICAS -> EstadisticasTab(uiState = actual.data)
                 }
@@ -171,6 +179,24 @@ private fun HeaderGrupo(uiState: GrupoDetailUiState?, onVolver: () -> Unit, onSi
                 Icon(Icons.Filled.MoreVert, contentDescription = "Más opciones", tint = Color.White)
             }
             DropdownMenu(expanded = menuAbierto, onDismissRequest = { menuAbierto = false }) {
+                DropdownMenuItem(
+                    text = { Text("Invitar al grupo") },
+                    leadingIcon = { Icon(Icons.Outlined.PersonAdd, contentDescription = null) },
+                    onClick = {
+                        menuAbierto = false
+                        val grupoActual = uiState?.grupo
+                        val codigo = grupoActual?.codigoInvitacion
+                        if (grupoActual != null && codigo != null) {
+                            compartirInvitacion(context, grupoActual.nombre, codigo)
+                        } else {
+                            Toast.makeText(
+                                context,
+                                "El código estará disponible cuando el grupo se sincronice con el servidor",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                )
                 DropdownMenuItem(
                     text = { Text("Compartir resumen") },
                     leadingIcon = { Icon(Icons.Filled.Share, contentDescription = null) },

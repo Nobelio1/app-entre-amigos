@@ -27,7 +27,10 @@ data class CrearGrupoUiState(
 
 class CrearGrupoViewModel(private val grupoRepository: GrupoRepository) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(CrearGrupoUiState())
+    // El primer integrante es el usuario autenticado; queda vinculado a su cuenta al sincronizar
+    private val _uiState = MutableStateFlow(
+        CrearGrupoUiState(nombresMiembros = listOf(grupoRepository.nombreUsuarioActual() ?: "Tú", ""))
+    )
     val uiState: StateFlow<CrearGrupoUiState> = _uiState.asStateFlow()
 
     fun actualizarNombreGrupo(nombre: String) {

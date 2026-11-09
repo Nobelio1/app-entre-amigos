@@ -17,7 +17,12 @@ class RemoteDataSource(private val api: EntreAmigosApi) {
             throw e
         } catch (e: HttpException) {
             val mensaje = extraerMensaje(e) ?: "El servidor respondió con el código ${e.code()}"
-            val tipo = if (e.code() in 400..499) TipoError.SOLICITUD_INVALIDA else TipoError.SERVIDOR
+            val tipo = when (e.code()) {
+                401 -> TipoError.NO_AUTORIZADO
+                404 -> TipoError.NO_ENCONTRADO
+                in 400..499 -> TipoError.SOLICITUD_INVALIDA
+                else -> TipoError.SERVIDOR
+            }
             Resource.Error(mensaje, tipo)
         } catch (e: IOException) {
             Resource.Error("No se pudo conectar con el servidor", TipoError.SIN_CONEXION)

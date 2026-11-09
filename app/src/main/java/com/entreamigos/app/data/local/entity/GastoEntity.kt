@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import java.util.UUID
 
 enum class CategoriaGasto {
     COMIDA, TRANSPORTE, HOSPEDAJE, ENTRETENIMIENTO, SERVICIOS, OTROS
@@ -36,6 +37,10 @@ data class GastoEntity(
     val pagadoPorId: Long,
     val categoria: CategoriaGasto = CategoriaGasto.OTROS,
     val fecha: Long = System.currentTimeMillis(),
+    /** null = aún no existe en el servidor (se crea con POST); con valor y sin sincronizar = edición pendiente (PUT). */
     val remoteId: Long? = null,
-    val sincronizado: Boolean = false
+    val sincronizado: Boolean = false,
+    /** Se incrementa en cada edición local; detecta ediciones hechas mientras la subida estaba en vuelo. */
+    val version: Int = 0,
+    val idempotencyKey: String = UUID.randomUUID().toString()
 )

@@ -7,6 +7,15 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
+// Firebase: el plugin lee app/google-services.json (descargado de la consola de Firebase).
+// Si el archivo no existe la app compila igual, solo que sin "Continuar con Google".
+val firebaseConfigurado = file("google-services.json").exists()
+if (firebaseConfigurado) {
+    apply(plugin = "com.google.gms.google-services")
+} else {
+    logger.warn("app/google-services.json no existe: el inicio de sesión con Google quedará deshabilitado")
+}
+
 val propiedadesLocales = Properties().apply {
     rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
 }
@@ -24,8 +33,8 @@ android {
         applicationId = "com.entreamigos.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "0.50-beta"
+        versionCode = 3
+        versionName = "0.75-beta"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -93,6 +102,14 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+
+    // Inicio de sesión con Google: Credential Manager + Firebase Authentication
+    implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
+    implementation("com.google.firebase:firebase-auth")
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")

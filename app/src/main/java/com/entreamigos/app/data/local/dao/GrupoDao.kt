@@ -34,6 +34,13 @@ interface GrupoDao {
     @Query("SELECT * FROM grupos WHERE remoteId IS NOT NULL")
     suspend fun obtenerSincronizados(): List<GrupoEntity>
 
-    @Query("UPDATE grupos SET remoteId = :remoteId, sincronizado = 1 WHERE id = :grupoId")
-    suspend fun marcarSincronizado(grupoId: Long, remoteId: Long)
+    @Query("UPDATE grupos SET remoteId = :remoteId, codigoInvitacion = :codigo, sincronizado = 1 WHERE id = :grupoId")
+    suspend fun marcarSincronizado(grupoId: Long, remoteId: Long, codigo: String?)
+
+    /** Grupos sincronizados a los que el usuario ya no pertenece en el servidor. */
+    @Query("DELETE FROM grupos WHERE remoteId IS NOT NULL AND remoteId NOT IN (:remoteIdsVigentes)")
+    suspend fun eliminarAusentes(remoteIdsVigentes: List<Long>)
+
+    @Query("DELETE FROM grupos WHERE remoteId IS NOT NULL")
+    suspend fun eliminarTodosLosSincronizados()
 }

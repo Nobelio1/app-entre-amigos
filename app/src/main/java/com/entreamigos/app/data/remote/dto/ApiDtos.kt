@@ -6,6 +6,44 @@ import kotlinx.serialization.Serializable
 data class ErrorDto(val error: String)
 
 @Serializable
+data class LoginRequest(val email: String, val password: String)
+
+@Serializable
+data class RegistroRequest(val nombre: String, val email: String, val password: String)
+
+@Serializable
+data class UsuarioDto(
+    val id: Long,
+    val nombre: String,
+    val email: String,
+    val colorAvatarHex: String = "#7E57C2",
+    val fotoUrl: String? = null,
+    val conGoogle: Boolean = false
+)
+
+@Serializable
+data class LoginGoogleRequest(val idToken: String)
+
+@Serializable
+data class SesionDto(val token: String, val expiraEn: Long, val usuario: UsuarioDto)
+
+@Serializable
+data class UnirseGrupoRequest(val codigo: String, val miembroId: Long? = null)
+
+@Serializable
+data class MiembroInvitacionDto(val id: Long, val nombre: String, val colorAvatarHex: String, val vinculado: Boolean)
+
+@Serializable
+data class InvitacionDto(
+    val grupoId: Long,
+    val nombre: String,
+    val icono: String = "GENERAL",
+    val colorHex: String = "#1B5E4F",
+    val codigo: String,
+    val miembros: List<MiembroInvitacionDto> = emptyList()
+)
+
+@Serializable
 data class CrearMiembroRequest(
     val nombre: String,
     val esUsuarioActual: Boolean = false,
@@ -45,7 +83,8 @@ data class MiembroDto(
     val grupoId: Long,
     val nombre: String,
     val esUsuarioActual: Boolean = false,
-    val colorAvatarHex: String = "#7E57C2"
+    val colorAvatarHex: String = "#7E57C2",
+    val usuarioId: Long? = null
 )
 
 @Serializable
@@ -55,6 +94,7 @@ data class GrupoDto(
     val icono: String = "GENERAL",
     val colorHex: String = "#1B5E4F",
     val fechaCreacion: Long,
+    val codigoInvitacion: String? = null,
     val miembros: List<MiembroDto> = emptyList()
 )
 

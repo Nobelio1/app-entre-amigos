@@ -14,6 +14,10 @@ sealed interface Resource<out T> {
 enum class TipoError {
     SIN_CONEXION,
     SOLICITUD_INVALIDA,
+    /** 401: sesión ausente, inválida o expirada. */
+    NO_AUTORIZADO,
+    /** 404: el recurso ya no existe en el servidor. */
+    NO_ENCONTRADO,
     SERVIDOR,
     DESCONOCIDO
 }

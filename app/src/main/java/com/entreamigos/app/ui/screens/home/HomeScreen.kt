@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.WavingHand
 import androidx.compose.material.icons.outlined.AddCircleOutline
+import androidx.compose.material.icons.outlined.GroupAdd
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Settings
@@ -46,6 +47,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -75,6 +79,7 @@ import com.entreamigos.app.ui.theme.RojoBadge
 import com.entreamigos.app.ui.theme.VerdeInicio
 import com.entreamigos.app.ui.theme.VerdeMenta
 import com.entreamigos.app.viewmodel.HomeViewModel
+import com.entreamigos.app.ui.screens.perfil.DialogoCerrarSesion
 import kotlinx.coroutines.launch
 
 private val AmarilloSaludo = Color(0xFFF6C343)
@@ -88,7 +93,9 @@ fun HomeScreen(
     onCrearGrupoClick: () -> Unit,
     onVerTodosGastosClick: () -> Unit,
     onNotificacionesClick: () -> Unit,
-    onPerfilClick: () -> Unit
+    onPerfilClick: () -> Unit,
+    onUnirseAGrupo: () -> Unit,
+    onCerrarSesion: () -> Unit
 ) {
     val viewModel: HomeViewModel = viewModel(
         factory = HomeViewModel.Factory(grupoRepository, gastoRepository, sincronizacionRepository)
@@ -104,6 +111,16 @@ fun HomeScreen(
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    var confirmarSalida by rememberSaveable { mutableStateOf(false) }
+    if (confirmarSalida) {
+        DialogoCerrarSesion(
+            onConfirmar = {
+                confirmarSalida = false
+                onCerrarSesion()
+            },
+            onCancelar = { confirmarSalida = false }
+        )
+    }
     fun avisoProximamente(texto: String) {
         scope.launch {
             drawerState.close()
@@ -120,8 +137,15 @@ fun HomeScreen(
                     scope.launch { drawerState.close() }
                     onPerfilClick()
                 },
+                onUnirseAGrupo = {
+                    scope.launch { drawerState.close() }
+                    onUnirseAGrupo()
+                },
                 onConfiguracion = { avisoProximamente("Configuración estará disponible próximamente") },
-                onCerrarSesion = { avisoProximamente("El inicio de sesión llega en la Fase 3") }
+                onCerrarSesion = {
+                    scope.launch { drawerState.close() }
+                    confirmarSalida = true
+                }
             )
         }
     ) {
@@ -169,7 +193,7 @@ fun HomeScreen(
                                     }
                                     if (estado.data.isEmpty()) {
                                         item(key = "grupos-vacio") {
-                                            EstadoVacio("Todavía no tienes grupos. Crea el primero para empezar a registrar gastos compartidos.")
+                                            EstadoVacio("Todavía no tienes grupos. Crea el primero o únete al de tus amigos con su código de invitación (menú ☰ → Unirse a un grupo).")
                                         }
                                     }
                                     items(estado.data, key = { "grupo-${it.grupoId}" }) { grupo ->
@@ -285,6 +309,7 @@ private fun HeaderInicio(
 private fun MenuLateral(
     nombreUsuario: String?,
     onPerfil: () -> Unit,
+    onUnirseAGrupo: () -> Unit,
     onConfiguracion: () -> Unit,
     onCerrarSesion: () -> Unit
 ) {
@@ -312,6 +337,13 @@ private fun MenuLateral(
             icon = { Icon(Icons.Outlined.Person, contentDescription = null) },
             selected = false,
             onClick = onPerfil,
+            modifier = modificador
+        )
+        NavigationDrawerItem(
+            label = { Text("Unirse a un grupo") },
+            icon = { Icon(Icons.Outlined.GroupAdd, contentDescription = null) },
+            selected = false,
+            onClick = onUnirseAGrupo,
             modifier = modificador
         )
         NavigationDrawerItem(

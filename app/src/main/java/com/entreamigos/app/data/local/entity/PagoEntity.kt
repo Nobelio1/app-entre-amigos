@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import java.util.UUID
 
 @Entity(
     tableName = "pagos",
@@ -38,5 +39,6 @@ data class PagoEntity(
     val monto: Double,
     val fecha: Long = System.currentTimeMillis(),
     val remoteId: Long? = null,
-    val sincronizado: Boolean = false
+    val sincronizado: Boolean = false,
+    val idempotencyKey: String = UUID.randomUUID().toString()
 )
