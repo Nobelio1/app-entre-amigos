@@ -35,7 +35,8 @@ interface PagoDao {
         "SELECT (SELECT COUNT(*) FROM grupos WHERE sincronizado = 0) + " +
             "(SELECT COUNT(*) FROM miembros WHERE sincronizado = 0) + " +
             "(SELECT COUNT(*) FROM gastos WHERE sincronizado = 0) + " +
-            "(SELECT COUNT(*) FROM pagos WHERE sincronizado = 0)"
+            "(SELECT COUNT(*) FROM pagos WHERE sincronizado = 0) + " +
+            "(SELECT COUNT(*) FROM gastos_eliminados)"
     )
     fun observarCambiosPendientes(): Flow<Int>
 }

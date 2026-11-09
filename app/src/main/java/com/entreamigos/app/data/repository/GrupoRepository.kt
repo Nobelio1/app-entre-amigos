@@ -2,6 +2,7 @@ package com.entreamigos.app.data.repository
 
 import androidx.room.withTransaction
 import com.entreamigos.app.data.local.AppDatabase
+import com.entreamigos.app.data.local.SesionManager
 import com.entreamigos.app.data.local.dao.GastoDao
 import com.entreamigos.app.data.local.dao.GrupoDao
 import com.entreamigos.app.data.local.dao.MiembroDao
@@ -25,7 +26,8 @@ class GrupoRepository(
     private val miembroDao: MiembroDao,
     private val gastoDao: GastoDao,
     private val pagoDao: PagoDao,
-    private val sincronizacion: SincronizacionRepository
+    private val sincronizacion: SincronizacionRepository,
+    private val sesion: SesionManager
 ) {
 
     fun observarGrupos(): Flow<List<GrupoEntity>> = grupoDao.observarGrupos()
@@ -42,6 +44,7 @@ class GrupoRepository(
                     grupoId = id,
                     nombre = nombreMiembro,
                     esUsuarioActual = index == 0,
+                    usuarioId = sesion.sesion.value?.usuarioId.takeIf { index == 0 },
                     colorAvatarHex = PALETA_AVATARES[index % PALETA_AVATARES.size]
                 )
             }
@@ -106,13 +109,13 @@ class GrupoRepository(
             )
         }
 
-    fun observarNombreUsuarioActual(): Flow<String?> =
-        miembroDao.observarNombresUsuarioActual().map { nombres ->
-            nombres.map { it.trim() }.firstOrNull { it.isNotEmpty() && !it.equals(NOMBRE_POR_DEFECTO, ignoreCase = true) }
-        }
+    /** Primer nombre del usuario autenticado, para el saludo de inicio. */
+    fun observarNombreUsuarioActual(): Flow<String?> = sesion.sesion.map { it?.primerNombre }
+
+    /** Nombre con el que el usuario aparece por defecto al crear un grupo. */
+    fun nombreUsuarioActual(): String? = sesion.sesion.value?.nombre
 
     companion object {
-        const val NOMBRE_POR_DEFECTO = "Tú"
         val PALETA_AVATARES = listOf("#EF5350", "#42A5F5", "#66BB6A", "#AB47BC", "#FFA726", "#26C6DA")
     }
 }

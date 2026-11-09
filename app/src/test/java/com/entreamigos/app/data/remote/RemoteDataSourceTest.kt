@@ -3,6 +3,8 @@ package com.entreamigos.app.data.remote
 import com.entreamigos.app.data.model.Resource
 import com.entreamigos.app.data.model.TipoError
 import com.entreamigos.app.data.remote.dto.CrearGastoRequest
+import com.entreamigos.app.data.remote.dto.CrearPagoRequest
+import com.entreamigos.app.data.remote.dto.LoginRequest
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
@@ -95,7 +97,85 @@ class RemoteDataSourceTest {
 
         val resultado = remoto.llamar { obtenerGrupo(99) }
 
-        assertEquals(Resource.Error("Grupo 99 no encontrado", TipoError.SOLICITUD_INVALIDA), resultado)
+        assertEquals(Resource.Error("Grupo 99 no encontrado", TipoError.NO_ENCONTRADO), resultado)
+    }
+
+    @Test
+    fun `error 401 se clasifica como no autorizado`() = runTest {
+        servidor.enqueue(json(401, """{"error":"Email o contraseña incorrectos"}"""))
+
+        val resultado = remoto.llamar { login(LoginRequest("a@b.test", "mala")) }
+
+        assertEquals(Resource.Error("Email o contraseña incorrectos", TipoError.NO_AUTORIZADO), resultado)
+    }
+
+    @Test
+    fun `login deserializa token y usuario`() = runTest {
+        servidor.enqueue(
+            json(200, """{"token":"abc.def.ghi","expiraEn":1999999999999,
+                "usuario":{"id":1,"nombre":"Gino Castillo","email":"gino@entreamigos.test","colorAvatarHex":"#EF5350"}}""")
+        )
+
+        val sesion = (remoto.llamar { login(LoginRequest("gino@entreamigos.test", "EntreAmigos2026")) } as Resource.Success).data
+
+        assertEquals("abc.def.ghi", sesion.token)
+        assertEquals("Gino Castillo", sesion.usuario.nombre)
+        assertEquals("/auth/login", servidor.takeRequest().path)
+    }
+
+    @Test
+    fun `los POST que crean recursos envian Idempotency-Key`() = runTest {
+        servidor.enqueue(json(201, """{"id":1,"grupoId":1,"deudorId":1,"acreedorId":2,"monto":5.0,"fecha":1}"""))
+
+        remoto.llamar { registrarPago(1, CrearPagoRequest(1, 2, 5.0), "clave-123") }
+
+        assertEquals("clave-123", servidor.takeRequest().getHeader("Idempotency-Key"))
+    }
+
+    @Test
+    fun `DELETE con 204 sin cuerpo es Success`() = runTest {
+        servidor.enqueue(MockResponse().setResponseCode(204))
+
+        val resultado = remoto.llamar { eliminarGasto(3, 9) }
+
+        assertTrue(resultado is Resource.Success)
+        val peticion = servidor.takeRequest()
+        assertEquals("DELETE", peticion.method)
+        assertEquals("/grupos/3/gastos/9", peticion.path)
+    }
+
+    @Test
+    fun `el interceptor agrega el token y avisa cuando el servidor responde 401`() = runTest {
+        var sesionInvalidada = false
+        val api = NetworkModule.crearRetrofit(
+            servidor.url("/").toString(),
+            NetworkModule.crearOkHttp(registrarTrafico = false, token = { "mi-token" }, onNoAutorizado = { sesionInvalidada = true })
+        ).create(EntreAmigosApi::class.java)
+        servidor.enqueue(json(200, "[]"))
+        servidor.enqueue(json(401, """{"error":"Inicia sesión para continuar"}"""))
+
+        RemoteDataSource(api).llamar { listarGrupos() }
+        assertEquals("Bearer mi-token", servidor.takeRequest().getHeader("Authorization"))
+        assertTrue(!sesionInvalidada)
+
+        val resultado = RemoteDataSource(api).llamar { listarGrupos() }
+        assertEquals(TipoError.NO_AUTORIZADO, (resultado as Resource.Error).tipo)
+        assertTrue(sesionInvalidada)
+    }
+
+    @Test
+    fun `sin sesion no se envia Authorization ni se invalida nada`() = runTest {
+        var sesionInvalidada = false
+        val api = NetworkModule.crearRetrofit(
+            servidor.url("/").toString(),
+            NetworkModule.crearOkHttp(registrarTrafico = false, token = { null }, onNoAutorizado = { sesionInvalidada = true })
+        ).create(EntreAmigosApi::class.java)
+        servidor.enqueue(json(401, """{"error":"Email o contraseña incorrectos"}"""))
+
+        RemoteDataSource(api).llamar { login(LoginRequest("a@b.test", "x")) }
+
+        assertEquals(null, servidor.takeRequest().getHeader("Authorization"))
+        assertTrue(!sesionInvalidada)
     }
 
     @Test

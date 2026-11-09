@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import java.util.UUID
 
 @Entity(
     tableName = "miembros",
@@ -25,5 +26,8 @@ data class MiembroEntity(
     val esUsuarioActual: Boolean = false,
     val colorAvatarHex: String = "#7E57C2",
     val remoteId: Long? = null,
-    val sincronizado: Boolean = false
+    val sincronizado: Boolean = false,
+    /** Cuenta vinculada a este integrante (null = integrante sin cuenta). */
+    val usuarioId: Long? = null,
+    val idempotencyKey: String = UUID.randomUUID().toString()
 )

@@ -6,7 +6,11 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.GroupAdd
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -33,7 +37,8 @@ fun GruposScreen(
     grupoRepository: GrupoRepository,
     gastoRepository: GastoRepository,
     sincronizacionRepository: SincronizacionRepository,
-    onGrupoClick: (Long) -> Unit
+    onGrupoClick: (Long) -> Unit,
+    onUnirseAGrupo: () -> Unit
 ) {
     val viewModel: HomeViewModel = viewModel(
         factory = HomeViewModel.Factory(grupoRepository, gastoRepository, sincronizacionRepository)
@@ -42,7 +47,14 @@ fun GruposScreen(
     val conexion by viewModel.conexion.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TopAppBar(title = { Text("Mis grupos") })
+        TopAppBar(
+            title = { Text("Mis grupos") },
+            actions = {
+                IconButton(onClick = onUnirseAGrupo) {
+                    Icon(Icons.Outlined.GroupAdd, contentDescription = "Unirse a un grupo con código")
+                }
+            }
+        )
         BannerConexion(estado = conexion, onReintentar = viewModel::refrescar)
 
         ContenedorRefrescable(
@@ -61,7 +73,7 @@ fun GruposScreen(
                     if (estado.data.isEmpty()) {
                         item {
                             Text(
-                                text = "Todavía no tienes grupos.",
+                                text = "Todavía no tienes grupos. Crea uno o únete con el código que te compartan (ícono de arriba).",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }

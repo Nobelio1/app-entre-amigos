@@ -3,7 +3,9 @@ package com.entreamigos.app.data.repository
 import android.util.Log
 import androidx.room.withTransaction
 import com.entreamigos.app.data.local.AppDatabase
+import com.entreamigos.app.data.local.SesionManager
 import com.entreamigos.app.data.local.entity.CategoriaGasto
+import com.entreamigos.app.data.local.entity.GastoEliminadoEntity
 import com.entreamigos.app.data.local.entity.GastoEntity
 import com.entreamigos.app.data.local.entity.GastoParticipanteEntity
 import com.entreamigos.app.data.local.entity.GrupoEntity
@@ -36,9 +38,17 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
+/**
+ * Sincronización offline-first:
+ *  1. **Subida** de lo pendiente en Room: altas (POST con `Idempotency-Key`), ediciones de
+ *     gastos (PUT) y borrados de gastos (DELETE).
+ *  2. **Descarga** de los grupos del usuario con upsert por `remoteId`, quitando lo que el
+ *     servidor ya no devuelve (gastos borrados en otro dispositivo, grupos que dejó).
+ */
 class SincronizacionRepository(
     private val database: AppDatabase,
     private val remoto: RemoteDataSource,
+    private val sesion: SesionManager,
     conectividad: ConectividadMonitor,
     private val scope: CoroutineScope
 ) {
@@ -77,8 +87,8 @@ class SincronizacionRepository(
     fun subirPendientesEnSegundoPlano() {
         scope.launch {
             mutex.withLock {
-                val resultado = subirPendientes()
-                _estado.value = when (resultado) {
+                if (sesion.token == null) return@withLock
+                _estado.value = when (val resultado = subirPendientes()) {
                     is Resource.Success -> Resource.Success(System.currentTimeMillis())
                     else -> resultado.comoEstado()
                 }
@@ -87,10 +97,15 @@ class SincronizacionRepository(
     }
 
     suspend fun sincronizar(): Resource<Long> = mutex.withLock {
+        if (sesion.token == null) return@withLock Resource.Error("Inicia sesión para sincronizar", TipoError.NO_AUTORIZADO)
         _estado.value = Resource.Loading
-        val resultado = when (val subida = subirPendientes()) {
-            is Resource.Success -> descargarTodo()
-            else -> subida
+        val subida = subirPendientes()
+        // Un registro rechazado por el servidor no debe bloquear la descarga del resto
+        val resultado = if (subida is Resource.Success || subida.esErrorDeDatos()) {
+            val descarga = descargarTodo()
+            if (descarga is Resource.Success) subida else descarga
+        } else {
+            subida
         }
         val estado = when (resultado) {
             is Resource.Success -> Resource.Success(System.currentTimeMillis())
@@ -100,11 +115,19 @@ class SincronizacionRepository(
         estado
     }
 
+    /** Ejecuta [bloque] sin que corra ninguna sincronización a la vez (p. ej. al cerrar sesión). */
+    suspend fun <T> enExclusiva(bloque: suspend () -> T): T = mutex.withLock {
+        val resultado = bloque()
+        _estado.value = Resource.Loading
+        resultado
+    }
+
     private suspend fun subirPendientes(): Resource<Unit> {
         var errorDeDatos: Resource.Error? = null
+        /** Devuelve el error si hay que abortar la subida (red, servidor o sesión). */
         fun registrar(error: Resource.Error, descripcion: String): Resource.Error? {
             Log.w(TAG, "No se pudo subir $descripcion: ${error.mensaje}")
-            if (error.tipo != TipoError.SOLICITUD_INVALIDA) return error
+            if (!error.esDeDatos()) return error
             errorDeDatos = error
             return null
         }
@@ -118,11 +141,11 @@ class SincronizacionRepository(
                 miembros = miembros.map { CrearMiembroRequest(it.nombre, it.esUsuarioActual, it.colorAvatarHex) },
                 fechaCreacion = grupo.fechaCreacion
             )
-            when (val r = remoto.llamar { crearGrupo(request) }) {
+            when (val r = remoto.llamar { crearGrupo(request, grupo.idempotencyKey) }) {
                 is Resource.Success -> database.withTransaction {
-                    grupoDao.marcarSincronizado(grupo.id, r.data.id)
+                    grupoDao.marcarSincronizado(grupo.id, r.data.id, r.data.codigoInvitacion)
                     r.data.miembros.zip(miembros).forEach { (remoto, local) ->
-                        miembroDao.marcarSincronizado(local.id, remoto.id)
+                        miembroDao.marcarSincronizado(local.id, remoto.id, remoto.usuarioId)
                     }
                 }
                 is Resource.Error -> registrar(r, "el grupo ${grupo.id}")?.let { return it }
@@ -132,10 +155,23 @@ class SincronizacionRepository(
 
         for (miembro in miembroDao.obtenerPendientes()) {
             val grupoRemoteId = grupoDao.obtener(miembro.grupoId)?.remoteId ?: continue
-            val request = CrearMiembroRequest(miembro.nombre, miembro.esUsuarioActual, miembro.colorAvatarHex)
-            when (val r = remoto.llamar { agregarMiembro(grupoRemoteId, request) }) {
-                is Resource.Success -> miembroDao.marcarSincronizado(miembro.id, r.data.id)
+            val request = CrearMiembroRequest(miembro.nombre, false, miembro.colorAvatarHex)
+            when (val r = remoto.llamar { agregarMiembro(grupoRemoteId, request, miembro.idempotencyKey) }) {
+                is Resource.Success -> miembroDao.marcarSincronizado(miembro.id, r.data.id, r.data.usuarioId)
                 is Resource.Error -> registrar(r, "el miembro ${miembro.id}")?.let { return it }
+                Resource.Loading -> Unit
+            }
+        }
+
+        for (eliminacion in gastoDao.obtenerEliminacionesPendientes()) {
+            when (val r = remoto.llamar { eliminarGasto(eliminacion.grupoRemoteId, eliminacion.remoteId) }) {
+                is Resource.Success -> gastoDao.confirmarEliminacion(eliminacion.remoteId)
+                // Ya no existe en el servidor: el objetivo del borrado se cumplió
+                is Resource.Error -> if (r.tipo == TipoError.NO_ENCONTRADO) {
+                    gastoDao.confirmarEliminacion(eliminacion.remoteId)
+                } else {
+                    registrar(r, "el borrado del gasto remoto ${eliminacion.remoteId}")?.let { return it }
+                }
                 Resource.Loading -> Unit
             }
         }
@@ -156,15 +192,35 @@ class SincronizacionRepository(
                 participantes = participantes.filterNotNull(),
                 fecha = gasto.fecha
             )
-            when (val r = remoto.llamar { registrarGasto(grupoRemoteId, request) }) {
+            val remoteId = gasto.remoteId
+            val r = if (remoteId == null) {
+                remoto.llamar { registrarGasto(grupoRemoteId, request, gasto.idempotencyKey) }
+            } else {
+                remoto.llamar { actualizarGasto(grupoRemoteId, remoteId, request) }
+            }
+            when (r) {
                 is Resource.Success -> database.withTransaction {
-                    gastoDao.marcarSincronizado(gasto.id, r.data.id)
-                    val localPorRemoto = remotoPorLocal.entries
-                        .mapNotNull { (local, remoto) -> remoto?.let { it to local } }
-                        .toMap()
-                    reemplazarParticipantes(gasto.id, r.data, localPorRemoto)
+                    val actual = gastoDao.obtener(gasto.id)
+                    when {
+                        // Se borró localmente mientras se subía: propagar el borrado
+                        actual == null -> gastoDao.registrarEliminacion(GastoEliminadoEntity(r.data.id, grupoRemoteId))
+                        // Se volvió a editar mientras se subía: queda pendiente para un PUT
+                        actual.version != gasto.version -> gastoDao.asignarRemoteId(gasto.id, r.data.id)
+                        else -> {
+                            gastoDao.marcarSincronizado(gasto.id, r.data.id)
+                            val localPorRemoto = remotoPorLocal.entries
+                                .mapNotNull { (local, remoto) -> remoto?.let { it to local } }
+                                .toMap()
+                            reemplazarParticipantes(gasto.id, r.data, localPorRemoto)
+                        }
+                    }
                 }
-                is Resource.Error -> registrar(r, "el gasto ${gasto.id}")?.let { return it }
+                is Resource.Error -> if (remoteId != null && r.tipo == TipoError.NO_ENCONTRADO) {
+                    // Se editó aquí un gasto que otro integrante ya borró: gana el borrado
+                    gastoDao.eliminarGasto(gasto)
+                } else {
+                    registrar(r, "el gasto ${gasto.id}")?.let { return it }
+                }
                 Resource.Loading -> Unit
             }
         }
@@ -175,7 +231,7 @@ class SincronizacionRepository(
             val deudor = remotoPorLocal[pago.deudorId] ?: continue
             val acreedor = remotoPorLocal[pago.acreedorId] ?: continue
             val request = CrearPagoRequest(deudor, acreedor, pago.monto, pago.fecha)
-            when (val r = remoto.llamar { registrarPago(grupoRemoteId, request) }) {
+            when (val r = remoto.llamar { registrarPago(grupoRemoteId, request, pago.idempotencyKey) }) {
                 is Resource.Success -> pagoDao.marcarSincronizado(pago.id, r.data.id)
                 is Resource.Error -> registrar(r, "el pago ${pago.id}")?.let { return it }
                 Resource.Loading -> Unit
@@ -192,6 +248,10 @@ class SincronizacionRepository(
             Resource.Loading -> return Resource.Loading
         }
 
+        // Grupos que el usuario ya no tiene en el servidor
+        if (grupos.isEmpty()) grupoDao.eliminarTodosLosSincronizados()
+        else grupoDao.eliminarAusentes(grupos.map { it.id })
+
         for (grupoDto in grupos) {
             val gastos = when (val r = remoto.llamar { listarGastos(grupoDto.id) }) {
                 is Resource.Success -> r.data
@@ -207,7 +267,10 @@ class SincronizacionRepository(
             database.withTransaction {
                 val grupoId = upsertGrupo(grupoDto)
                 val localPorRemoto = grupoDto.miembros.associate { it.id to upsertMiembro(it, grupoId) }
-                gastos.forEach { upsertGasto(it, grupoId, localPorRemoto) }
+                val borradosPendientes = gastoDao.obtenerRemoteIdsEliminados().toSet()
+                gastos.filter { it.id !in borradosPendientes }.forEach { upsertGasto(it, grupoId, localPorRemoto) }
+                if (gastos.isEmpty()) gastoDao.eliminarSincronizadosDeGrupo(grupoId)
+                else gastoDao.eliminarAusentes(grupoId, gastos.map { it.id })
                 pagos.forEach { upsertPago(it, grupoId, localPorRemoto) }
             }
         }
@@ -216,36 +279,42 @@ class SincronizacionRepository(
 
     private suspend fun upsertGrupo(dto: GrupoDto): Long {
         val existente = grupoDao.buscarPorRemoteId(dto.id)
-        val entidad = GrupoEntity(
+        val base = GrupoEntity(
             id = existente?.id ?: 0L,
             nombre = dto.nombre,
             icono = GrupoIcono.desdeNombre(dto.icono),
             colorHex = dto.colorHex,
             fechaCreacion = dto.fechaCreacion,
             remoteId = dto.id,
-            sincronizado = true
+            sincronizado = true,
+            codigoInvitacion = dto.codigoInvitacion ?: existente?.codigoInvitacion
         )
+        val entidad = existente?.let { base.copy(idempotencyKey = it.idempotencyKey) } ?: base
         return if (existente == null) grupoDao.insertar(entidad) else entidad.id.also { grupoDao.actualizar(entidad) }
     }
 
     private suspend fun upsertMiembro(dto: MiembroDto, grupoIdLocal: Long): Long {
         val existente = miembroDao.buscarPorRemoteId(dto.id)
-        val entidad = MiembroEntity(
+        val base = MiembroEntity(
             id = existente?.id ?: 0L,
             grupoId = grupoIdLocal,
             nombre = dto.nombre,
             esUsuarioActual = dto.esUsuarioActual,
             colorAvatarHex = dto.colorAvatarHex,
             remoteId = dto.id,
-            sincronizado = true
+            sincronizado = true,
+            usuarioId = dto.usuarioId
         )
+        val entidad = existente?.let { base.copy(idempotencyKey = it.idempotencyKey) } ?: base
         return if (existente == null) miembroDao.insertar(entidad) else entidad.id.also { miembroDao.actualizar(entidad) }
     }
 
     private suspend fun upsertGasto(dto: GastoDto, grupoIdLocal: Long, localPorRemoto: Map<Long, Long>) {
         val pagadoPor = localPorRemoto[dto.pagadoPorId] ?: return
         val existente = gastoDao.buscarPorRemoteId(dto.id)
-        val entidad = GastoEntity(
+        // Hay una edición local sin subir: no la pisamos con la versión del servidor
+        if (existente != null && !existente.sincronizado) return
+        val base = GastoEntity(
             id = existente?.id ?: 0L,
             grupoId = grupoIdLocal,
             descripcion = dto.descripcion,
@@ -256,6 +325,7 @@ class SincronizacionRepository(
             remoteId = dto.id,
             sincronizado = true
         )
+        val entidad = existente?.let { base.copy(idempotencyKey = it.idempotencyKey, version = it.version) } ?: base
         val gastoId = if (existente == null) gastoDao.insertarGasto(entidad) else entidad.id.also { gastoDao.actualizarGasto(entidad) }
         reemplazarParticipantes(gastoId, dto, localPorRemoto)
     }
@@ -264,7 +334,7 @@ class SincronizacionRepository(
         val deudor = localPorRemoto[dto.deudorId] ?: return
         val acreedor = localPorRemoto[dto.acreedorId] ?: return
         val existente = pagoDao.buscarPorRemoteId(dto.id)
-        val entidad = PagoEntity(
+        val base = PagoEntity(
             id = existente?.id ?: 0L,
             grupoId = grupoIdLocal,
             deudorId = deudor,
@@ -274,6 +344,7 @@ class SincronizacionRepository(
             remoteId = dto.id,
             sincronizado = true
         )
+        val entidad = existente?.let { base.copy(idempotencyKey = it.idempotencyKey) } ?: base
         if (existente == null) pagoDao.insertar(entidad) else pagoDao.actualizar(entidad)
     }
 
@@ -285,6 +356,12 @@ class SincronizacionRepository(
         gastoDao.eliminarParticipantes(gastoIdLocal)
         gastoDao.insertarParticipantes(participantes)
     }
+
+    /** Errores atribuibles a un registro concreto (no a la red ni a la sesión). */
+    private fun Resource.Error.esDeDatos() =
+        tipo == TipoError.SOLICITUD_INVALIDA || tipo == TipoError.NO_ENCONTRADO
+
+    private fun Resource<Unit>.esErrorDeDatos() = this is Resource.Error && esDeDatos()
 
     private fun Resource<Unit>.comoEstado(): Resource<Long> = when (this) {
         is Resource.Error -> this

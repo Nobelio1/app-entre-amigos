@@ -1,6 +1,7 @@
 package com.entreamigos.app.data.local.dao
 
 import androidx.room.*
+import com.entreamigos.app.data.local.entity.GastoEliminadoEntity
 import com.entreamigos.app.data.local.entity.GastoEntity
 import com.entreamigos.app.data.local.entity.GastoParticipanteEntity
 import kotlinx.coroutines.flow.Flow
@@ -55,4 +56,30 @@ interface GastoDao {
 
     @Query("UPDATE gastos SET remoteId = :remoteId, sincronizado = 1 WHERE id = :gastoId")
     suspend fun marcarSincronizado(gastoId: Long, remoteId: Long)
+
+    @Query("SELECT * FROM gastos WHERE id = :gastoId")
+    suspend fun obtener(gastoId: Long): GastoEntity?
+
+    /** El servidor ya creó el gasto pero hubo otra edición local después: sigue pendiente (PUT). */
+    @Query("UPDATE gastos SET remoteId = :remoteId WHERE id = :gastoId")
+    suspend fun asignarRemoteId(gastoId: Long, remoteId: Long)
+
+    /** Quita los gastos ya sincronizados que el servidor dejó de devolver (otro dispositivo los borró). */
+    @Query("DELETE FROM gastos WHERE grupoId = :grupoId AND sincronizado = 1 AND remoteId IS NOT NULL AND remoteId NOT IN (:remoteIdsVigentes)")
+    suspend fun eliminarAusentes(grupoId: Long, remoteIdsVigentes: List<Long>)
+
+    @Query("DELETE FROM gastos WHERE grupoId = :grupoId AND sincronizado = 1 AND remoteId IS NOT NULL")
+    suspend fun eliminarSincronizadosDeGrupo(grupoId: Long)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun registrarEliminacion(eliminacion: GastoEliminadoEntity)
+
+    @Query("SELECT * FROM gastos_eliminados")
+    suspend fun obtenerEliminacionesPendientes(): List<GastoEliminadoEntity>
+
+    @Query("SELECT remoteId FROM gastos_eliminados")
+    suspend fun obtenerRemoteIdsEliminados(): List<Long>
+
+    @Query("DELETE FROM gastos_eliminados WHERE remoteId = :remoteId")
+    suspend fun confirmarEliminacion(remoteId: Long)
 }

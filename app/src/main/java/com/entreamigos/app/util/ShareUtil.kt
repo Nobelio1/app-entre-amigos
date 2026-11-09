@@ -4,6 +4,17 @@ import android.content.Context
 import android.content.Intent
 import com.entreamigos.app.viewmodel.GrupoDetailUiState
 
+/** Comparte el código para que otra persona se una al grupo desde su propio dispositivo. */
+fun compartirInvitacion(context: Context, nombreGrupo: String, codigo: String) {
+    val texto = "Únete a \"$nombreGrupo\" en EntreAmigos para dividir gastos conmigo.\n" +
+        "Abre la app → Perfil → Unirme a un grupo con código e ingresa: $codigo"
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, texto)
+    }
+    context.startActivity(Intent.createChooser(intent, "Invitar a $nombreGrupo"))
+}
+
 fun compartirResumenGrupo(context: Context, uiState: GrupoDetailUiState) {
     val nombreGrupo = uiState.grupo?.nombre ?: "mi grupo"
     val balance = uiState.balanceUsuarioActual

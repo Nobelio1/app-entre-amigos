@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.math.BigDecimal
+import java.math.RoundingMode
 
 data class RegistrarGastoUiState(
     val descripcion: String = "",
@@ -24,11 +26,16 @@ data class RegistrarGastoUiState(
     val errorMonto: String? = null,
     val errorParticipantes: String? = null,
     val guardando: Boolean = false,
-    val gastoRegistrado: Boolean = false
+    val gastoRegistrado: Boolean = false,
+    val modoEdicion: Boolean = false,
+    val gastoNoEncontrado: Boolean = false,
+    val gastoEliminado: Boolean = false
 )
 
 class RegistrarGastoViewModel(
     private val grupoId: Long,
+    /** null = registrar un gasto nuevo; con valor = editar ese gasto. */
+    private val gastoId: Long?,
     grupoRepository: GrupoRepository,
     private val gastoRepository: GastoRepository
 ) : ViewModel() {
@@ -36,8 +43,38 @@ class RegistrarGastoViewModel(
     val miembros: StateFlow<List<MiembroEntity>> = grupoRepository.observarMiembros(grupoId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    private val _uiState = MutableStateFlow(RegistrarGastoUiState())
+    private val _uiState = MutableStateFlow(RegistrarGastoUiState(modoEdicion = gastoId != null))
     val uiState: StateFlow<RegistrarGastoUiState> = _uiState.asStateFlow()
+
+    init {
+        if (gastoId != null) cargarGasto(gastoId)
+    }
+
+    private fun cargarGasto(id: Long) {
+        viewModelScope.launch {
+            val (gasto, participantes) = gastoRepository.obtenerGastoParaEditar(id) ?: run {
+                _uiState.value = _uiState.value.copy(gastoNoEncontrado = true)
+                return@launch
+            }
+            _uiState.value = _uiState.value.copy(
+                descripcion = gasto.descripcion,
+                monto = BigDecimal.valueOf(gasto.monto).setScale(2, RoundingMode.HALF_UP).toPlainString(),
+                categoria = gasto.categoria,
+                pagadoPorId = gasto.pagadoPorId,
+                participantesSeleccionados = participantes.toSet()
+            )
+        }
+    }
+
+    fun eliminarGasto() {
+        val id = gastoId ?: return
+        if (_uiState.value.guardando) return
+        _uiState.value = _uiState.value.copy(guardando = true)
+        viewModelScope.launch {
+            gastoRepository.eliminarGasto(id)
+            _uiState.value = _uiState.value.copy(guardando = false, gastoEliminado = true)
+        }
+    }
 
     fun inicializarConMiembros(miembros: List<MiembroEntity>) {
         if (_uiState.value.pagadoPorId != null || miembros.isEmpty()) return
@@ -95,26 +132,38 @@ class RegistrarGastoViewModel(
         val pagadoPorId = estado.pagadoPorId ?: return
         _uiState.value = estado.copy(guardando = true)
         viewModelScope.launch {
-            gastoRepository.registrarGasto(
-                grupoId = grupoId,
-                descripcion = estado.descripcion,
-                monto = montoDouble!!,
-                pagadoPorId = pagadoPorId,
-                categoria = estado.categoria,
-                miembrosParticipantesIds = estado.participantesSeleccionados.toList()
-            )
+            if (gastoId != null) {
+                gastoRepository.actualizarGasto(
+                    gastoId = gastoId,
+                    descripcion = estado.descripcion,
+                    monto = montoDouble!!,
+                    pagadoPorId = pagadoPorId,
+                    categoria = estado.categoria,
+                    miembrosParticipantesIds = estado.participantesSeleccionados.toList()
+                )
+            } else {
+                gastoRepository.registrarGasto(
+                    grupoId = grupoId,
+                    descripcion = estado.descripcion,
+                    monto = montoDouble!!,
+                    pagadoPorId = pagadoPorId,
+                    categoria = estado.categoria,
+                    miembrosParticipantesIds = estado.participantesSeleccionados.toList()
+                )
+            }
             _uiState.value = _uiState.value.copy(guardando = false, gastoRegistrado = true)
         }
     }
 
     class Factory(
         private val grupoId: Long,
+        private val gastoId: Long?,
         private val grupoRepository: GrupoRepository,
         private val gastoRepository: GastoRepository
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return RegistrarGastoViewModel(grupoId, grupoRepository, gastoRepository) as T
+            return RegistrarGastoViewModel(grupoId, gastoId, grupoRepository, gastoRepository) as T
         }
     }
 }

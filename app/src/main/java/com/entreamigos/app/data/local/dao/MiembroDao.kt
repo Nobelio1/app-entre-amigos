@@ -25,9 +25,6 @@ interface MiembroDao {
     @Delete
     suspend fun eliminar(miembro: MiembroEntity)
 
-    @Query("SELECT nombre FROM miembros WHERE esUsuarioActual = 1 ORDER BY id DESC")
-    fun observarNombresUsuarioActual(): Flow<List<String>>
-
     @Update
     suspend fun actualizar(miembro: MiembroEntity)
 
@@ -37,6 +34,6 @@ interface MiembroDao {
     @Query("SELECT * FROM miembros WHERE sincronizado = 0 ORDER BY id ASC")
     suspend fun obtenerPendientes(): List<MiembroEntity>
 
-    @Query("UPDATE miembros SET remoteId = :remoteId, sincronizado = 1 WHERE id = :miembroId")
-    suspend fun marcarSincronizado(miembroId: Long, remoteId: Long)
+    @Query("UPDATE miembros SET remoteId = :remoteId, usuarioId = :usuarioId, sincronizado = 1 WHERE id = :miembroId")
+    suspend fun marcarSincronizado(miembroId: Long, remoteId: Long, usuarioId: Long?)
 }

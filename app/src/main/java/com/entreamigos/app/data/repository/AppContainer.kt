@@ -4,7 +4,9 @@ import android.content.Context
 import com.entreamigos.app.BuildConfig
 import com.entreamigos.app.data.local.AppDatabase
 import com.entreamigos.app.data.local.PreferenciasUsuario
+import com.entreamigos.app.data.local.SesionManager
 import com.entreamigos.app.data.remote.ConectividadMonitor
+import com.entreamigos.app.data.remote.GoogleAuthCliente
 import com.entreamigos.app.data.remote.NetworkModule
 import com.entreamigos.app.data.remote.RemoteDataSource
 import kotlinx.coroutines.CoroutineScope
@@ -17,16 +19,38 @@ class AppContainer(context: Context) {
 
     private val scopeAplicacion = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    val sesionManager = SesionManager(context.applicationContext)
+
+    private val preferencias = PreferenciasUsuario(context.applicationContext)
+
     private val remoteDataSource = RemoteDataSource(
-        NetworkModule.crearApi(baseUrl = BuildConfig.API_BASE_URL, registrarTrafico = BuildConfig.DEBUG)
+        NetworkModule.crearApi(
+            baseUrl = BuildConfig.API_BASE_URL,
+            registrarTrafico = BuildConfig.DEBUG,
+            token = { sesionManager.token },
+            // Token expirado o revocado: se vuelve a la pantalla de login (los datos locales se conservan)
+            onNoAutorizado = { sesionManager.borrar() }
+        )
     )
 
     val sincronizacionRepository: SincronizacionRepository by lazy {
         SincronizacionRepository(
             database = database,
             remoto = remoteDataSource,
+            sesion = sesionManager,
             conectividad = ConectividadMonitor(context.applicationContext),
             scope = scopeAplicacion
+        )
+    }
+
+    val authRepository: AuthRepository by lazy {
+        AuthRepository(
+            database = database,
+            remoto = remoteDataSource,
+            sesionManager = sesionManager,
+            sincronizacion = sincronizacionRepository,
+            preferencias = preferencias,
+            googleAuth = GoogleAuthCliente(context.applicationContext)
         )
     }
 
@@ -37,7 +61,8 @@ class AppContainer(context: Context) {
             miembroDao = database.miembroDao(),
             gastoDao = database.gastoDao(),
             pagoDao = database.pagoDao(),
-            sincronizacion = sincronizacionRepository
+            sincronizacion = sincronizacionRepository,
+            sesion = sesionManager
         )
     }
 
@@ -49,7 +74,7 @@ class AppContainer(context: Context) {
             pagoDao = database.pagoDao(),
             grupoDao = database.grupoDao(),
             sincronizacion = sincronizacionRepository,
-            preferencias = PreferenciasUsuario(context.applicationContext)
+            preferencias = preferencias
         )
     }
 }

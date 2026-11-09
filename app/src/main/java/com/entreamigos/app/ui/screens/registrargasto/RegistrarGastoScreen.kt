@@ -16,7 +16,13 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -49,14 +55,16 @@ import com.entreamigos.app.viewmodel.RegistrarGastoViewModel
 @Composable
 fun RegistrarGastoScreen(
     grupoId: Long,
+    gastoId: Long? = null,
     grupoRepository: GrupoRepository,
     gastoRepository: GastoRepository,
     onGastoRegistrado: () -> Unit,
     onCancelar: () -> Unit
 ) {
     val viewModel: RegistrarGastoViewModel = viewModel(
-        factory = RegistrarGastoViewModel.Factory(grupoId, grupoRepository, gastoRepository)
+        factory = RegistrarGastoViewModel.Factory(grupoId, gastoId, grupoRepository, gastoRepository)
     )
+    var confirmarEliminar by rememberSaveable { mutableStateOf(false) }
     val miembros by viewModel.miembros.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -67,8 +75,14 @@ fun RegistrarGastoScreen(
         ActivityResultContracts.RequestPermission()
     ) {  }
 
+    LaunchedEffect(uiState.gastoEliminado, uiState.gastoNoEncontrado) {
+        if (uiState.gastoEliminado || uiState.gastoNoEncontrado) onGastoRegistrado()
+    }
+
     LaunchedEffect(uiState.gastoRegistrado) {
-        if (uiState.gastoRegistrado) {
+        if (uiState.gastoRegistrado && uiState.modoEdicion) {
+            onGastoRegistrado()
+        } else if (uiState.gastoRegistrado) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !NotificationHelper.tienePermiso(context)) {
                 lanzadorPermisoNotificaciones.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
@@ -83,13 +97,35 @@ fun RegistrarGastoScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text("Registrar gasto") },
+            title = { Text(if (uiState.modoEdicion) "Editar gasto" else "Registrar gasto") },
             navigationIcon = {
                 IconButton(onClick = onCancelar) {
                     Icon(Icons.Filled.ArrowBack, contentDescription = "Volver")
                 }
+            },
+            actions = {
+                if (uiState.modoEdicion) {
+                    IconButton(onClick = { confirmarEliminar = true }, enabled = !uiState.guardando) {
+                        Icon(Icons.Outlined.Delete, contentDescription = "Eliminar gasto")
+                    }
+                }
             }
         )
+
+        if (confirmarEliminar) {
+            AlertDialog(
+                onDismissRequest = { confirmarEliminar = false },
+                title = { Text("¿Eliminar este gasto?") },
+                text = { Text("\"${uiState.descripcion}\" se quitará del grupo para todos sus integrantes y los saldos se recalcularán.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        confirmarEliminar = false
+                        viewModel.eliminarGasto()
+                    }) { Text("Eliminar", color = MaterialTheme.colorScheme.error) }
+                },
+                dismissButton = { TextButton(onClick = { confirmarEliminar = false }) { Text("Cancelar") } }
+            )
+        }
 
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -181,7 +217,13 @@ fun RegistrarGastoScreen(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !uiState.guardando
                 ) {
-                    Text(if (uiState.guardando) "Guardando..." else "Guardar gasto")
+                    Text(
+                        when {
+                            uiState.guardando -> "Guardando..."
+                            uiState.modoEdicion -> "Guardar cambios"
+                            else -> "Guardar gasto"
+                        }
+                    )
                 }
             }
         }

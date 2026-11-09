@@ -12,4 +12,8 @@ sealed class Screen(val route: String) {
     data object RegistrarGasto : Screen("grupo/{grupoId}/registrar_gasto") {
         fun crearRuta(grupoId: Long) = "grupo/$grupoId/registrar_gasto"
     }
+
+    data object EditarGasto : Screen("grupo/{grupoId}/gasto/{gastoId}/editar") {
+        fun crearRuta(grupoId: Long, gastoId: Long) = "grupo/$grupoId/gasto/$gastoId/editar"
+    }
 }

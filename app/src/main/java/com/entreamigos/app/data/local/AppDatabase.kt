@@ -11,6 +11,7 @@ import com.entreamigos.app.data.local.dao.GrupoDao
 import com.entreamigos.app.data.local.dao.MiembroDao
 import com.entreamigos.app.data.local.dao.PagoDao
 import com.entreamigos.app.data.local.entity.CategoriaGasto
+import com.entreamigos.app.data.local.entity.GastoEliminadoEntity
 import com.entreamigos.app.data.local.entity.GastoEntity
 import com.entreamigos.app.data.local.entity.GastoParticipanteEntity
 import com.entreamigos.app.data.local.entity.GrupoEntity
@@ -38,9 +39,12 @@ class Converters {
         MiembroEntity::class,
         GastoEntity::class,
         GastoParticipanteEntity::class,
-        PagoEntity::class
+        PagoEntity::class,
+        GastoEliminadoEntity::class
     ],
-    version = 2,
+    // v3 (Fase 3): cuentas de usuario, idempotencia y borrados pendientes. Los datos locales
+    // anteriores no tienen dueño, así que se descartan (fallbackToDestructiveMigration).
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

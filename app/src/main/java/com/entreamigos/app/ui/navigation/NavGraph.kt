@@ -6,6 +6,14 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import com.entreamigos.app.data.repository.AuthRepository
+import com.entreamigos.app.ui.screens.grupos.UnirseGrupoDialog
+import kotlinx.coroutines.launch
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -30,9 +38,30 @@ fun EntreAmigosNavGraph(
     grupoRepository: GrupoRepository,
     gastoRepository: GastoRepository,
     sincronizacionRepository: SincronizacionRepository,
+    authRepository: AuthRepository,
     navController: NavHostController = rememberNavController()
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
+    val scope = rememberCoroutineScope()
+    var dialogoUnirse by rememberSaveable { mutableIntStateOf(0) }
+    var mostrarUnirse by rememberSaveable { mutableStateOf(false) }
+    val abrirUnirse = {
+        dialogoUnirse++
+        mostrarUnirse = true
+    }
+    val cerrarSesion: () -> Unit = { scope.launch { authRepository.cerrarSesion() } }
+
+    if (mostrarUnirse) {
+        UnirseGrupoDialog(
+            authRepository = authRepository,
+            instancia = dialogoUnirse,
+            onCerrar = { mostrarUnirse = false },
+            onUnido = { grupoId ->
+                mostrarUnirse = false
+                navController.navigate(Screen.GrupoDetail.crearRuta(grupoId))
+            }
+        )
+    }
     val rutaActual = backStackEntry?.destination?.route
 
     val mostrarBottomBar = rutaActual in setOf(
@@ -67,7 +96,9 @@ fun EntreAmigosNavGraph(
                     onCrearGrupoClick = { navController.navigate(Screen.CrearGrupo.route) },
                     onVerTodosGastosClick = { navegarATab(navController, "gastos") },
                     onNotificacionesClick = { navegarATab(navController, "gastos") },
-                    onPerfilClick = { navegarATab(navController, Screen.Perfil.route) }
+                    onPerfilClick = { navegarATab(navController, Screen.Perfil.route) },
+                    onUnirseAGrupo = abrirUnirse,
+                    onCerrarSesion = cerrarSesion
                 )
             }
 
@@ -76,7 +107,8 @@ fun EntreAmigosNavGraph(
                     grupoRepository = grupoRepository,
                     gastoRepository = gastoRepository,
                     sincronizacionRepository = sincronizacionRepository,
-                    onGrupoClick = { grupoId -> navController.navigate(Screen.GrupoDetail.crearRuta(grupoId)) }
+                    onGrupoClick = { grupoId -> navController.navigate(Screen.GrupoDetail.crearRuta(grupoId)) },
+                    onUnirseAGrupo = abrirUnirse
                 )
             }
 
@@ -85,7 +117,11 @@ fun EntreAmigosNavGraph(
             }
 
             composable(Screen.Perfil.route) {
-                PerfilScreen()
+                PerfilScreen(
+                    authRepository = authRepository,
+                    onUnirseAGrupo = abrirUnirse,
+                    onCerrarSesion = cerrarSesion
+                )
             }
 
             composable(Screen.CrearGrupo.route) {
@@ -111,7 +147,8 @@ fun EntreAmigosNavGraph(
                     gastoRepository = gastoRepository,
                     sincronizacionRepository = sincronizacionRepository,
                     onVolver = { navController.popBackStack() },
-                    onRegistrarGastoClick = { navController.navigate(Screen.RegistrarGasto.crearRuta(grupoId)) }
+                    onRegistrarGastoClick = { navController.navigate(Screen.RegistrarGasto.crearRuta(grupoId)) },
+                    onEditarGasto = { gastoId -> navController.navigate(Screen.EditarGasto.crearRuta(grupoId, gastoId)) }
                 )
             }
 
@@ -122,6 +159,25 @@ fun EntreAmigosNavGraph(
                 val grupoId = backStack.arguments?.getLong("grupoId") ?: return@composable
                 RegistrarGastoScreen(
                     grupoId = grupoId,
+                    grupoRepository = grupoRepository,
+                    gastoRepository = gastoRepository,
+                    onGastoRegistrado = { navController.popBackStack() },
+                    onCancelar = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                route = Screen.EditarGasto.route,
+                arguments = listOf(
+                    navArgument("grupoId") { type = NavType.LongType },
+                    navArgument("gastoId") { type = NavType.LongType }
+                )
+            ) { backStack ->
+                val grupoId = backStack.arguments?.getLong("grupoId") ?: return@composable
+                val gastoId = backStack.arguments?.getLong("gastoId") ?: return@composable
+                RegistrarGastoScreen(
+                    grupoId = grupoId,
+                    gastoId = gastoId,
                     grupoRepository = grupoRepository,
                     gastoRepository = gastoRepository,
                     onGastoRegistrado = { navController.popBackStack() },

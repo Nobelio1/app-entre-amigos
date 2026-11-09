@@ -1,5 +1,6 @@
 package com.entreamigos.app.ui.screens.grupodetail
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,11 +24,19 @@ import com.entreamigos.app.ui.components.TarjetaEntreAmigos
 import com.entreamigos.app.viewmodel.GrupoDetailUiState
 
 @Composable
-fun GastosTab(uiState: GrupoDetailUiState, onRegistrarGastoClick: () -> Unit) {
+fun GastosTab(uiState: GrupoDetailUiState, onRegistrarGastoClick: () -> Unit, onEditarGasto: (Long) -> Unit) {
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 88.dp), modifier = Modifier.fillMaxSize()) {
             item {
                 TarjetaEntreAmigos(modifier = Modifier.fillMaxWidth()) {
+                    if (uiState.gastos.isNotEmpty()) {
+                        Text(
+                            text = "Toca un gasto para editarlo o eliminarlo.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 14.dp, top = 10.dp, end = 14.dp)
+                        )
+                    }
                     if (uiState.gastos.isEmpty()) {
                         Text(
                             text = "Aún no hay gastos registrados en este grupo.",
@@ -38,7 +47,10 @@ fun GastosTab(uiState: GrupoDetailUiState, onRegistrarGastoClick: () -> Unit) {
                     }
                     uiState.gastos.forEachIndexed { indice, gasto ->
                         if (indice > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        GastoItem(gasto = gasto)
+                        GastoItem(
+                            gasto = gasto,
+                            modifier = Modifier.clickable(onClickLabel = "Editar o eliminar gasto") { onEditarGasto(gasto.id) }
+                        )
                     }
                 }
             }

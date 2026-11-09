@@ -8,6 +8,7 @@ import com.entreamigos.app.data.local.dao.GrupoDao
 import com.entreamigos.app.data.local.dao.MiembroDao
 import com.entreamigos.app.data.local.dao.PagoDao
 import com.entreamigos.app.data.local.entity.CategoriaGasto
+import com.entreamigos.app.data.local.entity.GastoEliminadoEntity
 import com.entreamigos.app.data.local.entity.GastoEntity
 import com.entreamigos.app.data.local.entity.GastoParticipanteEntity
 import com.entreamigos.app.data.local.entity.MiembroEntity
@@ -64,6 +65,64 @@ class GastoRepository(
         }
         sincronizacion.subirPendientesEnSegundoPlano()
         return gastoId
+    }
+
+    /** Gasto tal como está guardado, con los ids de sus participantes (para el formulario de edición). */
+    suspend fun obtenerGastoParaEditar(gastoId: Long): Pair<GastoEntity, List<Long>>? {
+        val gasto = gastoDao.obtener(gastoId) ?: return null
+        return gasto to gastoDao.obtenerParticipantes(gastoId).map { it.miembroId }
+    }
+
+    /**
+     * Edita un gasto en Room y lo marca pendiente: si ya existía en el servidor se enviará
+     * con PUT, si no, el POST pendiente llevará los datos nuevos.
+     */
+    suspend fun actualizarGasto(
+        gastoId: Long,
+        descripcion: String,
+        monto: Double,
+        pagadoPorId: Long,
+        categoria: CategoriaGasto,
+        miembrosParticipantesIds: List<Long>
+    ) {
+        require(descripcion.isNotBlank()) { "La descripción no puede estar vacía" }
+        require(monto > 0.0) { "El monto debe ser mayor a cero" }
+        require(miembrosParticipantesIds.isNotEmpty()) { "Selecciona al menos un participante" }
+
+        database.withTransaction {
+            val actual = gastoDao.obtener(gastoId) ?: return@withTransaction
+            gastoDao.actualizarGasto(
+                actual.copy(
+                    descripcion = descripcion.trim(),
+                    monto = monto,
+                    pagadoPorId = pagadoPorId,
+                    categoria = categoria,
+                    sincronizado = false,
+                    version = actual.version + 1
+                )
+            )
+            gastoDao.eliminarParticipantes(gastoId)
+            gastoDao.insertarParticipantes(
+                BalanceCalculator.dividirEnPartesIguales(monto, miembrosParticipantesIds).map { (miembroId, asignado) ->
+                    GastoParticipanteEntity(gastoId = gastoId, miembroId = miembroId, montoAsignado = asignado)
+                }
+            )
+        }
+        sincronizacion.subirPendientesEnSegundoPlano()
+    }
+
+    /** Borra el gasto localmente al instante y, si ya estaba en el servidor, deja pendiente el DELETE. */
+    suspend fun eliminarGasto(gastoId: Long) {
+        database.withTransaction {
+            val gasto = gastoDao.obtener(gastoId) ?: return@withTransaction
+            val remoteId = gasto.remoteId
+            val grupoRemoteId = grupoDao.obtener(gasto.grupoId)?.remoteId
+            if (remoteId != null && grupoRemoteId != null) {
+                gastoDao.registrarEliminacion(GastoEliminadoEntity(remoteId = remoteId, grupoRemoteId = grupoRemoteId))
+            }
+            gastoDao.eliminarGasto(gasto)
+        }
+        sincronizacion.subirPendientesEnSegundoPlano()
     }
 
     fun observarGastosDeGrupo(grupoId: Long): Flow<List<Gasto>> =
