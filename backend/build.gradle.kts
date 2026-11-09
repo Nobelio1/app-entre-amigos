@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.entreamigos"
-version = "0.5.0"
+version = "0.7.5"
 
 val ktorVersion = "2.3.12"
 val exposedVersion = "0.53.0"
@@ -37,6 +37,9 @@ dependencies {
     implementation("io.ktor:ktor-serialization-kotlinx-json-jvm:$ktorVersion")
     implementation("io.ktor:ktor-server-status-pages-jvm:$ktorVersion")
     implementation("io.ktor:ktor-server-call-logging-jvm:$ktorVersion")
+    implementation("io.ktor:ktor-server-auth-jvm:$ktorVersion")
+    implementation("io.ktor:ktor-server-auth-jwt-jvm:$ktorVersion")
+    implementation("org.mindrot:jbcrypt:0.4")
     implementation("ch.qos.logback:logback-classic:1.5.8")
 
     implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
