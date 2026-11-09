@@ -26,81 +26,125 @@ import com.entreamigos.backend.model.SaldosDto
 import com.entreamigos.backend.model.ParticipanteDto
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.batchInsert
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.update
 
 class GastoService(private val grupoService: GrupoService) {
 
-    suspend fun listarGastos(grupoId: Long): List<GastoDto> = consulta {
-        miembrosOFallar(grupoId)
+    suspend fun listarGastos(grupoId: Long, usuarioId: Long): List<GastoDto> = consulta {
+        miembrosOFallar(grupoId, usuarioId)
         gastosDe(grupoId)
     }
 
-    suspend fun registrarGasto(grupoId: Long, request: CrearGastoRequest): GastoDto {
-        val descripcion = request.descripcion.trim()
-        validar(descripcion.isNotEmpty()) { "La descripción no puede estar vacía" }
-        validar(descripcion.length <= 200) { "La descripción no puede superar 200 caracteres" }
-        validar(request.monto > 0.0 && request.monto.isFinite()) { "El monto debe ser mayor a cero" }
-        validar(request.monto <= MONTO_MAXIMO) { "El monto supera el máximo permitido" }
-        val categoria = parsearCategoria(request.categoria)
-        val participantes = request.participantes.distinct()
-        validar(participantes.isNotEmpty()) { "Selecciona al menos un participante" }
-        val montoCentavos = request.monto.aCentavos()
-
-        return consulta {
-            val idsMiembros = miembrosOFallar(grupoId).map { it.id }.toSet()
-            validar(request.pagadoPorId in idsMiembros) { "pagadoPorId no pertenece al grupo" }
-            validar(idsMiembros.containsAll(participantes)) { "Hay participantes que no pertenecen al grupo" }
-
-            val gastoId = Gastos.insert {
-                it[Gastos.grupoId] = grupoId
-                it[Gastos.descripcion] = descripcion
-                it[monto] = montoCentavos.aBigDecimal()
-                it[pagadoPorId] = request.pagadoPorId
-                it[Gastos.categoria] = categoria.name
-                it[fecha] = request.fecha ?: System.currentTimeMillis()
-            } get Gastos.id
-
-            val reparto = BalanceCalculator.dividirEnPartesIguales(montoCentavos, participantes)
-            GastoParticipantes.batchInsert(reparto.entries) { (miembroId, centavos) ->
-                this[GastoParticipantes.gastoId] = gastoId
-                this[GastoParticipantes.miembroId] = miembroId
-                this[GastoParticipantes.montoAsignado] = centavos.aBigDecimal()
+    suspend fun registrarGasto(
+        grupoId: Long,
+        request: CrearGastoRequest,
+        usuarioId: Long,
+        clave: String?
+    ): Creado<GastoDto> {
+        val datos = request.validado()
+        consulta { miembrosOFallar(grupoId, usuarioId) }
+        return crearIdempotente(
+            clave = clave,
+            buscar = { k ->
+                val fila = Gastos.selectAll().where { Gastos.idempotencyKey eq k }.singleOrNull()
+                    ?: return@crearIdempotente null
+                if (fila[Gastos.grupoId] != grupoId) throw ConflictoException(GrupoService.CLAVE_REUTILIZADA)
+                gastosDe(grupoId, soloGastoId = fila[Gastos.id]).single()
+            },
+            crear = {
+                datos.validarMiembros(miembrosOFallar(grupoId, usuarioId))
+                val gastoId = Gastos.insert {
+                    it[Gastos.grupoId] = grupoId
+                    it[descripcion] = datos.descripcion
+                    it[monto] = datos.montoCentavos.aBigDecimal()
+                    it[pagadoPorId] = datos.pagadoPorId
+                    it[categoria] = datos.categoria.name
+                    it[fecha] = datos.fecha ?: System.currentTimeMillis()
+                    it[idempotencyKey] = clave
+                } get Gastos.id
+                insertarReparto(gastoId, datos)
+                gastosDe(grupoId, soloGastoId = gastoId).single()
             }
+        )
+    }
+
+    /** Reemplaza todos los datos del gasto y recalcula el reparto en partes iguales. */
+    suspend fun actualizarGasto(grupoId: Long, gastoId: Long, request: CrearGastoRequest, usuarioId: Long): GastoDto {
+        val datos = request.validado()
+        return consulta {
+            datos.validarMiembros(miembrosOFallar(grupoId, usuarioId))
+            val filas = Gastos.update({ (Gastos.id eq gastoId) and (Gastos.grupoId eq grupoId) }) {
+                it[descripcion] = datos.descripcion
+                it[monto] = datos.montoCentavos.aBigDecimal()
+                it[pagadoPorId] = datos.pagadoPorId
+                it[categoria] = datos.categoria.name
+                if (datos.fecha != null) it[fecha] = datos.fecha
+                it[fechaActualizacion] = System.currentTimeMillis()
+            }
+            if (filas == 0) throw RecursoNoEncontradoException("Gasto $gastoId no encontrado en el grupo $grupoId")
+            GastoParticipantes.deleteWhere { GastoParticipantes.gastoId eq gastoId }
+            insertarReparto(gastoId, datos)
             gastosDe(grupoId, soloGastoId = gastoId).single()
         }
     }
 
-    suspend fun listarPagos(grupoId: Long): List<PagoDto> = consulta {
-        miembrosOFallar(grupoId)
+    suspend fun eliminarGasto(grupoId: Long, gastoId: Long, usuarioId: Long) = consulta {
+        miembrosOFallar(grupoId, usuarioId)
+        val filas = Gastos.deleteWhere { (Gastos.id eq gastoId) and (Gastos.grupoId eq grupoId) }
+        if (filas == 0) throw RecursoNoEncontradoException("Gasto $gastoId no encontrado en el grupo $grupoId")
+    }
+
+    suspend fun listarPagos(grupoId: Long, usuarioId: Long): List<PagoDto> = consulta {
+        miembrosOFallar(grupoId, usuarioId)
         pagosDe(grupoId)
     }
 
-    suspend fun registrarPago(grupoId: Long, request: CrearPagoRequest): PagoDto {
+    suspend fun registrarPago(
+        grupoId: Long,
+        request: CrearPagoRequest,
+        usuarioId: Long,
+        clave: String?
+    ): Creado<PagoDto> {
         validar(request.monto > 0.0 && request.monto.isFinite()) { "El monto debe ser mayor a cero" }
         validar(request.monto <= MONTO_MAXIMO) { "El monto supera el máximo permitido" }
         validar(request.deudorId != request.acreedorId) { "El deudor y el acreedor deben ser distintos" }
+        consulta { miembrosOFallar(grupoId, usuarioId) }
 
-        return consulta {
-            val idsMiembros = miembrosOFallar(grupoId).map { it.id }.toSet()
-            validar(request.deudorId in idsMiembros) { "deudorId no pertenece al grupo" }
-            validar(request.acreedorId in idsMiembros) { "acreedorId no pertenece al grupo" }
+        return crearIdempotente(
+            clave = clave,
+            buscar = { k ->
+                val fila = Pagos.selectAll().where { Pagos.idempotencyKey eq k }.singleOrNull()
+                    ?: return@crearIdempotente null
+                if (fila[Pagos.grupoId] != grupoId) throw ConflictoException(GrupoService.CLAVE_REUTILIZADA)
+                fila.aPagoDto()
+            },
+            crear = {
+                val idsMiembros = miembrosOFallar(grupoId, usuarioId).map { it.id }.toSet()
+                validar(request.deudorId in idsMiembros) { "deudorId no pertenece al grupo" }
+                validar(request.acreedorId in idsMiembros) { "acreedorId no pertenece al grupo" }
 
-            val pagoId = Pagos.insert {
-                it[Pagos.grupoId] = grupoId
-                it[deudorId] = request.deudorId
-                it[acreedorId] = request.acreedorId
-                it[monto] = request.monto.aCentavos().aBigDecimal()
-                it[fecha] = request.fecha ?: System.currentTimeMillis()
-            } get Pagos.id
-            Pagos.selectAll().where { Pagos.id eq pagoId }.single().aPagoDto()
-        }
+                val pagoId = Pagos.insert {
+                    it[Pagos.grupoId] = grupoId
+                    it[deudorId] = request.deudorId
+                    it[acreedorId] = request.acreedorId
+                    it[monto] = request.monto.aCentavos().aBigDecimal()
+                    it[fecha] = request.fecha ?: System.currentTimeMillis()
+                    it[idempotencyKey] = clave
+                } get Pagos.id
+                Pagos.selectAll().where { Pagos.id eq pagoId }.single().aPagoDto()
+            }
+        )
     }
 
-    suspend fun calcularSaldos(grupoId: Long): SaldosDto = consulta {
-        val miembros = miembrosOFallar(grupoId)
+    suspend fun calcularSaldos(grupoId: Long, usuarioId: Long): SaldosDto = consulta {
+        val miembros = miembrosOFallar(grupoId, usuarioId)
         val gastos = gastosDe(grupoId)
         val pagos = pagosDe(grupoId)
 
@@ -128,8 +172,8 @@ class GastoService(private val grupoService: GrupoService) {
         )
     }
 
-    suspend fun calcularEstadisticas(grupoId: Long): EstadisticasDto = consulta {
-        miembrosOFallar(grupoId)
+    suspend fun calcularEstadisticas(grupoId: Long, usuarioId: Long): EstadisticasDto = consulta {
+        miembrosOFallar(grupoId, usuarioId)
         val centavosPorCategoria = Gastos.selectAll().where { Gastos.grupoId eq grupoId }
             .groupBy({ it[Gastos.categoria] }, { it[Gastos.monto].aCentavos() })
             .mapValues { it.value.sum() }
@@ -151,8 +195,8 @@ class GastoService(private val grupoService: GrupoService) {
         )
     }
 
-    suspend fun obtenerActividad(grupoId: Long, limite: Int): List<ActividadDto> = consulta {
-        val nombres = miembrosOFallar(grupoId).associate { it.id to it.nombre }
+    suspend fun obtenerActividad(grupoId: Long, usuarioId: Long, limite: Int): List<ActividadDto> = consulta {
+        val nombres = miembrosOFallar(grupoId, usuarioId).associate { it.id to it.nombre }
         val gastos = gastosDe(grupoId).map {
             ActividadDto(
                 tipo = "GASTO",
@@ -184,8 +228,43 @@ class GastoService(private val grupoService: GrupoService) {
         (gastos + pagos).sortedByDescending { it.fecha }.take(limite)
     }
 
-    private fun miembrosOFallar(grupoId: Long): List<MiembroDto> =
-        grupoService.miembrosDe(grupoId) ?: throw RecursoNoEncontradoException("Grupo $grupoId no encontrado")
+    private fun miembrosOFallar(grupoId: Long, usuarioId: Long): List<MiembroDto> =
+        grupoService.miembrosConAcceso(grupoId, usuarioId)
+
+    private class DatosGasto(
+        val descripcion: String,
+        val montoCentavos: Long,
+        val pagadoPorId: Long,
+        val categoria: CategoriaGasto,
+        val participantes: List<Long>,
+        val fecha: Long?
+    ) {
+        fun validarMiembros(miembros: List<MiembroDto>) {
+            val ids = miembros.map { it.id }.toSet()
+            validar(pagadoPorId in ids) { "pagadoPorId no pertenece al grupo" }
+            validar(ids.containsAll(participantes)) { "Hay participantes que no pertenecen al grupo" }
+        }
+    }
+
+    private fun CrearGastoRequest.validado(): DatosGasto {
+        val limpia = descripcion.trim()
+        validar(limpia.isNotEmpty()) { "La descripción no puede estar vacía" }
+        validar(limpia.length <= 200) { "La descripción no puede superar 200 caracteres" }
+        validar(monto > 0.0 && monto.isFinite()) { "El monto debe ser mayor a cero" }
+        validar(monto <= MONTO_MAXIMO) { "El monto supera el máximo permitido" }
+        val distintos = participantes.distinct()
+        validar(distintos.isNotEmpty()) { "Selecciona al menos un participante" }
+        return DatosGasto(limpia, monto.aCentavos(), pagadoPorId, parsearCategoria(categoria), distintos, fecha)
+    }
+
+    private fun insertarReparto(gastoId: Long, datos: DatosGasto) {
+        val reparto = BalanceCalculator.dividirEnPartesIguales(datos.montoCentavos, datos.participantes)
+        GastoParticipantes.batchInsert(reparto.entries) { (miembroId, centavos) ->
+            this[GastoParticipantes.gastoId] = gastoId
+            this[GastoParticipantes.miembroId] = miembroId
+            this[GastoParticipantes.montoAsignado] = centavos.aBigDecimal()
+        }
+    }
 
     private fun gastosDe(grupoId: Long, soloGastoId: Long? = null): List<GastoDto> {
         val filas = Gastos.selectAll()
@@ -212,7 +291,8 @@ class GastoService(private val grupoService: GrupoService) {
                 pagadoPorId = it[Gastos.pagadoPorId],
                 categoria = it[Gastos.categoria],
                 fecha = it[Gastos.fecha],
-                participantes = participantesPorGasto[it[Gastos.id]].orEmpty()
+                participantes = participantesPorGasto[it[Gastos.id]].orEmpty(),
+                fechaActualizacion = it[Gastos.fechaActualizacion]
             )
         }
     }

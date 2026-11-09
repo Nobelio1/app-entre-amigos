@@ -13,7 +13,8 @@ Backend Ktor + PostgreSQL. Base URL local: `http://localhost:8080`
 | IDs | Enteros `Long` generados por el servidor. |
 | Categorías | `COMIDA`, `TRANSPORTE`, `HOSPEDAJE`, `ENTRETENIMIENTO`, `SERVICIOS`, `OTROS` (no distingue mayúsculas en la entrada). |
 | Íconos de grupo | Texto libre en mayúsculas que la app mapea a su enum `GrupoIcono` (`VIAJE`, `CASA`, `SALIDAS`, …). |
-| Autenticación | Ninguna en esta fase (se agrega en la Fase 3). |
+| Autenticación | JWT Bearer. Todas las rutas `/grupos/**` y `/auth/yo` requieren `Authorization: Bearer <token>`. |
+| Idempotencia | Los POST que crean recursos aceptan `Idempotency-Key` (máx. 64 caracteres; la app envía un UUID). |
 
 ### Formato de error
 
@@ -27,8 +28,12 @@ Todas las respuestas de error usan el mismo cuerpo:
 |---|---|
 | `200 OK` | Lectura exitosa |
 | `201 Created` | Recurso creado; el cuerpo contiene el recurso completo con su `id` |
+| `204 No Content` | Borrado exitoso |
 | `400 Bad Request` | JSON mal formado, campos obligatorios ausentes, validación fallida o id no numérico |
-| `404 Not Found` | El grupo no existe o la ruta no existe |
+| `401 Unauthorized` | Falta el token, es inválido o expiró; o email/contraseña incorrectos |
+| `403 Forbidden` | El usuario no es miembro del grupo |
+| `404 Not Found` | El grupo/gasto no existe o la ruta no existe |
+| `409 Conflict` | Email ya registrado, integrante ya vinculado o `Idempotency-Key` usada en otro recurso |
 | `500 Internal Server Error` | Error inesperado. El mensaje es genérico; el detalle queda en los logs del contenedor (`docker compose logs api`) |
 
 ---
@@ -40,10 +45,71 @@ Todas las respuestas de error usan el mismo cuerpo:
 
 ---
 
+## Autenticación
+
+### `POST /auth/registro`
+```json
+{ "nombre": "Ana Pérez", "email": "ana@ejemplo.com", "password": "minimo8caracteres" }
+```
+`201` → sesión (mismo formato que login). `400` validación (email inválido, contraseña < 8). `409` email ya registrado.
+
+### `POST /auth/login`
+```json
+{ "email": "gino@entreamigos.test", "password": "EntreAmigos2026" }
+```
+`200` →
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiJ9…",
+  "expiraEn": 1765400000000,
+  "usuario": { "id": 1, "nombre": "Gino Castillo", "email": "gino@entreamigos.test", "colorAvatarHex": "#EF5350" }
+}
+```
+`401` si el email o la contraseña no coinciden. El token dura 30 días (`JWT_VALIDEZ_DIAS`).
+
+### `POST /auth/google`
+Inicio de sesión con Google vía Firebase Authentication. La app envía el **ID token de
+Firebase** (`FirebaseUser.getIdToken()`), no el de Google.
+```json
+{ "idToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6…" }
+```
+El servidor verifica la firma RS256 con las claves públicas de
+`securetoken@system.gserviceaccount.com`, que `aud` sea el `FIREBASE_PROJECT_ID`, que
+`iss` sea `https://securetoken.google.com/<proyecto>` y que no haya expirado.
+`200` → sesión (mismo formato que login; `usuario.conGoogle = true`). La cuenta se busca por
+el UID de Firebase; si no existe se vincula a la cuenta con el mismo email (si Google lo
+verificó) o se crea una nueva.
+`401` token inválido/expirado. `409` el email ya pertenece a otra cuenta que no puede
+vincularse. `503` el servidor no tiene `FIREBASE_PROJECT_ID`.
+
+Las cuentas creadas con Google no tienen contraseña: `POST /auth/login` responde `401`
+indicando que usen Google.
+
+### `GET /auth/yo`
+`200` → el `usuario` autenticado.
+
+---
+
+## Idempotencia
+
+`POST /grupos`, `POST /grupos/{id}/miembros`, `POST /grupos/{id}/gastos` y
+`POST /grupos/{id}/pagos` aceptan el encabezado `Idempotency-Key`. Si llega una segunda
+petición con la misma clave (p. ej. la app reintenta porque se perdió la respuesta), el
+servidor **no crea otro recurso**: responde `200` con el recurso original y el encabezado
+`Idempotent-Replayed: true`. La primera vez responde `201`. Reusar la clave en otro grupo u
+otra cuenta → `409`. Cada tabla tiene un índice único parcial sobre `idempotency_key`, que
+también resuelve dos reintentos simultáneos.
+
+---
+
 ## Grupos
 
+Un grupo solo es visible para los usuarios vinculados a alguno de sus miembros.
+`esUsuarioActual` se calcula según quién hace la petición: el mismo grupo devuelve
+`true` en un integrante distinto para cada cuenta.
+
 ### `GET /grupos`
-Lista todos los grupos con sus miembros, del más reciente al más antiguo.
+Lista los grupos del usuario con sus miembros, del más reciente al más antiguo.
 
 `200` →
 ```json
@@ -54,8 +120,9 @@ Lista todos los grupos con sus miembros, del más reciente al más antiguo.
     "icono": "VIAJE",
     "colorHex": "#1B5E4F",
     "fechaCreacion": 1716508800000,
+    "codigoInvitacion": "K7M2QX",
     "miembros": [
-      { "id": 1, "grupoId": 1, "nombre": "Moisés", "esUsuarioActual": true, "colorAvatarHex": "#EF5350" },
+      { "id": 1, "grupoId": 1, "nombre": "Moisés", "esUsuarioActual": true, "colorAvatarHex": "#EF5350", "usuarioId": 2 },
       { "id": 2, "grupoId": 1, "nombre": "Ana", "esUsuarioActual": false, "colorAvatarHex": "#42A5F5" }
     ]
   }
@@ -81,7 +148,25 @@ Crea un grupo con sus miembros en una sola transacción.
   "miembros": [ { "nombre": "Moisés", "esUsuarioActual": true }, { "nombre": "Ana" } ]
 }
 ```
+El creador queda vinculado al miembro con `esUsuarioActual: true` (o al primero si ninguno
+lo indica); el resto son integrantes sin cuenta hasta que se unan con el código.
+
 `201` → el grupo creado (mismo formato que en `GET /grupos`). `400` si falla alguna validación.
+
+### `GET /grupos/invitacion/{codigo}`
+Vista previa para unirse (no requiere ser miembro). `404` si el código no existe.
+```json
+{ "grupoId": 1, "nombre": "Proyecto Desarrollo Móvil", "icono": "ESTUDIOS", "colorHex": "#1B5E4F", "codigo": "DEMO26",
+  "miembros": [ { "id": 5, "nombre": "Ana", "colorAvatarHex": "#42A5F5", "vinculado": false } ] }
+```
+
+### `POST /grupos/unirse`
+```json
+{ "codigo": "DEMO26", "miembroId": 5 }
+```
+Vincula la cuenta al integrante `miembroId` (debe estar libre → si no, `409`). Sin
+`miembroId` se usa un integrante libre con el mismo nombre que la cuenta o se crea uno
+nuevo. `201` → el grupo; `200` si ya era miembro.
 
 ### `GET /grupos/{id}`
 `200` → un grupo con sus miembros. `404` si no existe. `400` si `id` no es un entero positivo.
@@ -143,6 +228,14 @@ extra (100.00 / 3 → 33.34, 33.33, 33.33), de modo que la suma siempre coincide
 { "descripcion": "Cena en restaurante", "monto": 100, "pagadoPorId": 2, "categoria": "COMIDA", "participantes": [1, 2, 3] }
 ```
 `201` → el gasto creado con su reparto. `400` por validación. `404` si el grupo no existe.
+
+### `PUT /grupos/{id}/gastos/{gastoId}`
+Mismo cuerpo que el POST. Reemplaza los datos y **recalcula el reparto**; si `fecha` se
+omite se conserva la original. `200` → el gasto actualizado (con `fechaActualizacion`).
+`404` si el gasto no pertenece al grupo.
+
+### `DELETE /grupos/{id}/gastos/{gastoId}`
+`204`. `404` si el gasto ya no existe (la app lo trata como borrado exitoso).
 
 ---
 
@@ -230,9 +323,8 @@ Los campos que no aplican a un tipo (`acreedorId` en gastos, `categoria` en pago
 
 ## Limitaciones conocidas (para fases siguientes)
 
-- **Sin autenticación**: `esUsuarioActual` se guarda tal como lo envía el dispositivo que
-  creó el grupo. Con login (Fase 3) pasará a derivarse del usuario autenticado.
-- **Sin idempotencia en los POST**: si la respuesta de un POST se pierde por la red y el
-  cliente reintenta, el recurso se duplica. La solución prevista es un encabezado
-  `Idempotency-Key` (UUID generado por la app) con restricción `UNIQUE` en la base.
-- **Sin edición ni borrado** de gastos o pagos todavía.
+- Edición concurrente: gana la última escritura (no hay control de versiones en el servidor).
+  Si un dispositivo edita offline un gasto que otro ya borró, al sincronizar gana el borrado.
+- Los pagos (liquidaciones) aún no se pueden deshacer.
+- Los grupos creados antes de la Fase 3 no tienen miembros vinculados a cuentas, así que no
+  los ve nadie: recrea la base (`docker compose down -v`) o vincúlalos a mano.

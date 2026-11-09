@@ -30,6 +30,9 @@ services:
       DB_USER: ${POSTGRES_USER:-entreamigos}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-entreamigos}
       PORT: 8080
+      DB_SEED: ${DB_SEED:-true}
+      JWT_SECRET: ${JWT_SECRET:-entreamigos-dev-secret-cambiar-en-produccion}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
     ports:
       - "${API_PORT:-8080}:8080"
 

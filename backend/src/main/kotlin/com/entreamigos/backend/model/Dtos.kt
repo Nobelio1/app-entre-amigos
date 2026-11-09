@@ -8,6 +8,44 @@ enum class CategoriaGasto { COMIDA, TRANSPORTE, HOSPEDAJE, ENTRETENIMIENTO, SERV
 data class ErrorResponse(val error: String)
 
 @Serializable
+data class RegistroRequest(val nombre: String, val email: String, val password: String)
+
+@Serializable
+data class LoginRequest(val email: String, val password: String)
+
+@Serializable
+data class UsuarioDto(
+    val id: Long,
+    val nombre: String,
+    val email: String,
+    val colorAvatarHex: String,
+    val fotoUrl: String? = null,
+    val conGoogle: Boolean = false
+)
+
+@Serializable
+data class LoginGoogleRequest(val idToken: String)
+
+@Serializable
+data class SesionDto(val token: String, val expiraEn: Long, val usuario: UsuarioDto)
+
+@Serializable
+data class UnirseGrupoRequest(val codigo: String, val miembroId: Long? = null)
+
+@Serializable
+data class MiembroInvitacionDto(val id: Long, val nombre: String, val colorAvatarHex: String, val vinculado: Boolean)
+
+@Serializable
+data class InvitacionDto(
+    val grupoId: Long,
+    val nombre: String,
+    val icono: String,
+    val colorHex: String,
+    val codigo: String,
+    val miembros: List<MiembroInvitacionDto>
+)
+
+@Serializable
 data class CrearMiembroRequest(
     val nombre: String,
     val esUsuarioActual: Boolean = false,
@@ -47,7 +85,8 @@ data class MiembroDto(
     val grupoId: Long,
     val nombre: String,
     val esUsuarioActual: Boolean,
-    val colorAvatarHex: String
+    val colorAvatarHex: String,
+    val usuarioId: Long? = null
 )
 
 @Serializable
@@ -57,6 +96,7 @@ data class GrupoDto(
     val icono: String,
     val colorHex: String,
     val fechaCreacion: Long,
+    val codigoInvitacion: String,
     val miembros: List<MiembroDto>
 )
 
@@ -72,7 +112,8 @@ data class GastoDto(
     val pagadoPorId: Long,
     val categoria: String,
     val fecha: Long,
-    val participantes: List<ParticipanteDto>
+    val participantes: List<ParticipanteDto>,
+    val fechaActualizacion: Long? = null
 )
 
 @Serializable

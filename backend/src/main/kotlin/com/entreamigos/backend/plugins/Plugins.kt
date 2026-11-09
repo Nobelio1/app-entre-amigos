@@ -1,7 +1,11 @@
 package com.entreamigos.backend.plugins
 
 import com.entreamigos.backend.model.ErrorResponse
+import com.entreamigos.backend.service.ConflictoException
+import com.entreamigos.backend.service.NoAutenticadoException
 import com.entreamigos.backend.service.RecursoNoEncontradoException
+import com.entreamigos.backend.service.ServicioNoDisponibleException
+import com.entreamigos.backend.service.SinPermisoException
 import com.entreamigos.backend.service.SolicitudInvalidaException
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
@@ -48,6 +52,18 @@ fun Application.configurarErrores() {
         }
         exception<RecursoNoEncontradoException> { call, causa ->
             call.respond(HttpStatusCode.NotFound, ErrorResponse(causa.message ?: "Recurso no encontrado"))
+        }
+        exception<NoAutenticadoException> { call, causa ->
+            call.respond(HttpStatusCode.Unauthorized, ErrorResponse(causa.message ?: "No autenticado"))
+        }
+        exception<SinPermisoException> { call, causa ->
+            call.respond(HttpStatusCode.Forbidden, ErrorResponse(causa.message ?: "Sin permiso"))
+        }
+        exception<ServicioNoDisponibleException> { call, causa ->
+            call.respond(HttpStatusCode.ServiceUnavailable, ErrorResponse(causa.message ?: "Servicio no disponible"))
+        }
+        exception<ConflictoException> { call, causa ->
+            call.respond(HttpStatusCode.Conflict, ErrorResponse(causa.message ?: "Conflicto"))
         }
         exception<Throwable> { call, causa ->
             call.application.environment.log.error("Error no controlado en ${call.request.path()}", causa)
